@@ -23,6 +23,7 @@ const app: Express = express();
 
 const port = process.env.PORT || 5001;
 
+app.use(cors())
 app.use(express.json());
 app.use("/api/users", [userRouter, userProfileRouter]);
 app.use("/api/teams", [teamRouter, teamChallengeRouter]);
@@ -31,7 +32,6 @@ app.use("/api/challenges", challengeRouter);
 app.use("/api/chats", chatRouter);
 app.use("/api/messages", messageRouter);
 app.use(errorHandler);
-app.use(cors())
 app.disable("x-powered-by"); // less hackers know about our stack
 
 app.listen(port, () => {
