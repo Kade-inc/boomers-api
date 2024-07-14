@@ -4,7 +4,7 @@ interface ITeam {
   owner_id: Schema.Types.ObjectId;
   name: string;
   isActive: boolean;
-  domain: Schema.Types.ObjectId;
+  domain: any;
   subdomain: Schema.Types.ObjectId;
   subdomainTopics: any;
   teamUsername: string;
@@ -38,11 +38,11 @@ const teamSchema = new Schema<ITeam>(
       type: String,
     },
     domain: {
-      type: Schema.Types.ObjectId,
+      type: String,
       required: true,
     },
     subdomain: {
-      type: Schema.Types.ObjectId,
+      type: String,
     },
     subdomainTopics: {
       type: Array,

@@ -17,6 +17,7 @@ import challengeRouter from "./routes/challenges/challengeRoutes";
 import chatRouter from "./routes/chatRoutes";
 import messageRouter from "./routes/messageRoutes";
 
+const cors = require('cors')
 dotenv.config();
 
 connectDb();
@@ -25,6 +26,7 @@ var session = require("express-session");
 
 const port = process.env.PORT || 5001;
 
+app.use(cors())
 app.use(express.json());
 // //Setting up cookies
 // app.use(

@@ -42,7 +42,7 @@ const userProfileSchema = new Schema<IUserProfile>(
       default: null,
     },
     interests: {
-      type: Array,
+      type: {},
       default: null,
     },
     username: {
