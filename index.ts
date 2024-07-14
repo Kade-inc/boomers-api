@@ -22,7 +22,7 @@ dotenv.config();
 
 connectDb();
 const app: Express = express();
-var session = require("express-session");
+const session = require("express-session");
 
 const port = process.env.PORT || 5001;
 
