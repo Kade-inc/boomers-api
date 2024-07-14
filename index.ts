@@ -6,6 +6,7 @@ import connectDb from "./config/dbConnection";
 import swaggerDocs from "./swagger";
 
 import dotenv from "dotenv";
+// import cors from "cors";
 import userProfileRouter from "./routes/userProfileRoutes";
 import teamRouter from "./routes/team/teamRoutes";
 import teamMemberRouter from "./routes/team/teamMemberRoutes";
@@ -14,6 +15,7 @@ import challengeRouter from "./routes/challenges/challengeRoutes";
 import chatRouter from "./routes/chatRoutes";
 import messageRouter from "./routes/messageRoutes";
 
+const cors = require('cors')
 dotenv.config();
 
 connectDb();
@@ -29,6 +31,7 @@ app.use("/api/challenges", challengeRouter);
 app.use("/api/chats", chatRouter);
 app.use("/api/messages", messageRouter);
 app.use(errorHandler);
+app.use(cors())
 app.disable("x-powered-by"); // less hackers know about our stack
 
 app.listen(port, () => {
