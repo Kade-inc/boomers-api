@@ -129,9 +129,9 @@ const registerUser = asyncHandler(async (req: Request, res: Response) => {
         const emailTemplate = `<div>
         <p>Hi ${username.trim()},</p>
         <p>Thank you for signing up to Boomers.</p>
-        <p>Your verification code is: </p>
-        <h2>${unhashedCode}</h2>
-        <p>This code will expire in 24 hours.</p>
+        <p>Click on the link below to verify your account: </p>
+        <p><a href="http://localhost:5173/verify?email=${email}&verificationCode=${unhashedCode}" target=”_blank”>Verification link</a></p>
+        <p>This link will expire in 24 hours.</p>
         </div>`;
         sendMail(transporter, email, emailTemplate);
       }
