@@ -130,7 +130,7 @@ const registerUser = asyncHandler(async (req: Request, res: Response) => {
         <p>Hi ${username.trim()},</p>
         <p>Thank you for signing up to Boomers.</p>
         <p>Click on the link below to verify your account: </p>
-        <p><a href="${process.env.FRONTEND_URL}/verification?email=${email}&verificationCode=${unhashedCode}" target=”_blank”>Verification link</a></p>
+        <p><a href="${process.env.FRONTEND_URL}/verification?email=${email}&verificationCode=${unhashedCode}" target="_blank">Verification link</a></p>
         <p>This link will expire in 24 hours.</p>
         </div>`;
         sendMail(transporter, email, emailTemplate);
@@ -392,7 +392,7 @@ export const forgotPassword = async (req: Request, res: Response) => {
                 <h2>Hi ${user.username}</h2>
                 <p>You requested to reset your password</p>
                 <p>Please click on the below link to reset your password</p>
-                <a href="${url}/passwordReset?token=${resetToken}&id=${user._id}">Reset Password</a>
+                <a href="${process.env.FRONTEND_URL}/reset-password?token=${resetToken}&id=${user._id}" target=_"blank">Reset Password</a>
             </div>`;
     // Assuming you have a function sendMail defined somewhere
     sendMail(transporter, email, emailTemplate, "Forgot Password");
