@@ -136,10 +136,10 @@ userRouter.post("/verify-login", verifyUserCode);
  *           schema:
  *            type: object
  *            required:
- *              - email
+ *              - accountId
  *              - verificationCode
  *            properties:
- *              email:
+ *              accountId:
  *                type: string
  *                default: johndoe@mail.com
  *              verificationCode:
