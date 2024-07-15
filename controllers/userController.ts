@@ -502,7 +502,7 @@ const sendMail = async (
       address: process.env.USER_EMAIL,
     }, // sender address
     to: [user], // list of receivers
-    subject: subject ? subject : "Verification Code", // Subject line
+    subject: subject ? subject : "Verification Link", // Subject line
     html: template,
   };
   try {
