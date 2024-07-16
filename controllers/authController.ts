@@ -92,7 +92,6 @@ export const verifyUserCode = asyncHandler(
           { email: accountId.trim() },
         ],
       });
-
       if (!user.length) {
         res.status(404);
         throw new Error("User not found");

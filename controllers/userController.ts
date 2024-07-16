@@ -344,8 +344,23 @@ export const getUser = asyncHandler(async (req: Request, res: Response) => {
 //@route GET /api/users
 //access public
 export const getUsers = asyncHandler(async (req: Request, res: Response) => {
-  const users = await User.find({});
-  res.status(200).json(users);
+  try {
+    const { username } = req.query;
+    let users;
+    if (username) {
+      // users = await User.find({ username: { $regex: ".*" + username + ".*" } });
+      users = await User.find({
+        username: { $regex: username, $options: "i" },
+      });
+    } else {
+      users = await User.find({});
+    }
+    res.json(users);
+  } catch (error: any) {
+    res
+      .status(500)
+      .json({ message: "Error searching for users", error: error.message });
+  }
 });
 
 //@desc Get current user info
