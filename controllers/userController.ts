@@ -413,7 +413,7 @@ export const forgotPassword = async (req: Request, res: Response) => {
     sendMail(transporter, email, emailTemplate, "Forgot Password");
     res.status(200).json({
       message: "Reset password email sent successfully",
-      data: `${url}/passwordReset?token=${resetToken}&id=${user._id}`,
+      data: `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}&id=${user._id}`,
     });
   } catch (error: any) {
     res.status(400).json({ error: error });
