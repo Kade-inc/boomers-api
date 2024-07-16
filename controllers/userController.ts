@@ -393,15 +393,32 @@ export const forgotPassword = async (req: Request, res: Response) => {
     const salt = await bcrypt.genSalt(saltRounds);
     const hash = await bcrypt.hash(resetToken, salt);
 
-    // Save token to the database
-    await new ResetPasswordToken({
-      userId: user._id,
-      token: hash,
-      createdAt: Date.now(),
-    }).save();
+    const userToken = await ResetPasswordToken.findOne({
+      userId: user._id
+    })
+
+    if (userToken) {
+      await ResetPasswordToken.findByIdAndUpdate(
+        userToken._id,
+          {
+            token: hash,
+          },
+          {
+            new: true,
+          }
+      )
+    } else {
+       // Save token to the database
+   
+      await new ResetPasswordToken({
+        userId: user._id,
+        token: hash,
+        createdAt: Date.now(),
+      }).save();
+    }
+   
 
     // Send email with the reset link
-    const url = process.env.PORT;
     const emailTemplate = `
             <div>
                 <h2>Hi ${user.username}</h2>
