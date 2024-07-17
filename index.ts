@@ -64,9 +64,10 @@ app.get(
 
 app.get(
   "/google/callback",
-  passport.authenticate("google", { failureRedirect: "/failed" }),
+  passport.authenticate("google", { failureRedirect: `${process.env.FRONTEND_URL}` }),
   (req, res) => {
-    res.redirect("/good");
+    // Redirect to dashboard on successful registration
+    res.redirect(`${process.env.FRONTEND_URL}/dashboard`);
   }
 );
 

@@ -36,7 +36,6 @@ passport.use(
       profile: any,
       done: any
     ) => {
-      console.log(profile);
       const email = profile.email;
       const userAvailable = await User.findOne({
         email,
@@ -54,10 +53,7 @@ passport.use(
           username: profile.displayName.replace(/\s/g, ""),
           profile_picture: profile.picture,
         });
-      } else {
-        console.log("USER EXISTS");
       }
-
       done(null, profile);
     }
   )
