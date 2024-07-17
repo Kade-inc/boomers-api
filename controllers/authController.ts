@@ -44,27 +44,45 @@ const logInUser = asyncHandler(async (req: Request, res: Response) => {
       throw new Error("Invalid email/phone or password");
     }
 
-    const existingAuthCode = await UserLoginCode.findOne({
-      userId: user[0]._id,
-    });
+    // const existingAuthCode = await UserLoginCode.findOne({
+    //   userId: user[0]._id,
+    // });
 
-    if (existingAuthCode) {
-      await UserLoginCode.findByIdAndDelete(existingAuthCode._id);
-    }
+    // if (existingAuthCode) {
+    //   await UserLoginCode.findByIdAndDelete(existingAuthCode._id);
+    // }
 
-    // Generate Auth Code
-    const authCode = generateAuthCode();
+    // // Generate Auth Code
+    // const authCode = generateAuthCode();
 
-    // Hash the Auth Code
-    const hashedAuthCode = await bcrypt.hash(authCode, 10);
+    // // Hash the Auth Code
+    // const hashedAuthCode = await bcrypt.hash(authCode, 10);
 
-    // Store the hashed authentication code in the database
-    await UserLoginCode.create({
-      userId: user[0]._id,
-      logInCode: hashedAuthCode,
-    });
+    // // Store the hashed authentication code in the database
+    // await UserLoginCode.create({
+    //   userId: user[0]._id,
+    //   logInCode: hashedAuthCode,
+    // });
 
-    res.status(200).json({ message: "Log in successful", authCode });
+    // res.status(200).json({ message: "Log in successful", authCode });
+    // Create a JWT token with an expiration time of 1 hour
+      const token = jwt.sign(
+        {
+          user: {
+            phoneNumber: user[0].phoneNumber,
+            email: user[0].email,
+            id: user[0]._id,
+          },
+        },
+        process.env.ACCESS_TOKEN_SECRET!,
+        {
+          expiresIn: "1h",
+        }
+      );
+
+      res.status(200).json({ message: "Log in successful", token });
+
+    
   } catch (error: any) {
     throw new Error(error);
   }
