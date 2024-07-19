@@ -96,7 +96,7 @@ const registerUser = asyncHandler(async (req: Request, res: Response) => {
     if (!password.trim().match(regexPattern)) {
       res.status(400).json({
         error:
-          "Password must be 8-15 characters, have at least one alphabet (uppercase or lowercase), have at least one number present and have at least one special character (-,.,@,$,!,%,+,=,<,>,#,?,&)",
+          "Password must be at least 8 characters long, have at least one alphabet (uppercase or lowercase), have at least one number present and have at least one special character (-,.,@,$,!,%,+,=,<,>,#,?,&)",
       });
       return;
     }
@@ -114,7 +114,7 @@ const registerUser = asyncHandler(async (req: Request, res: Response) => {
       const unhashedCode = generateRandomNumber();
       const hashCode = await bcrypt.hash(unhashedCode, 10);
 
-      const userCode = await UserVerificationCode.create({
+      await UserVerificationCode.create({
         code: hashCode,
         phoneNumber: validatedPhoneNumber,
         email,
