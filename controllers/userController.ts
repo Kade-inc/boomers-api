@@ -167,7 +167,7 @@ export const verifyUser = asyncHandler(async (req: Request, res: Response) => {
         res.status(404).json({ error: "User does not exist." });
         return;
       } else {
-        res.status(409).json({ error: "Verification code expired." });
+        res.status(400).json({ error: "Verification code expired." });
         return;
       }
     }
