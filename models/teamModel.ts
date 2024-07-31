@@ -10,6 +10,7 @@ interface ITeam {
   teamUsername: string;
   displayImage: string;
   backgroundImage: string;
+  teamColor: string;
 }
 
 const teamSchema = new Schema<ITeam>(
@@ -47,6 +48,9 @@ const teamSchema = new Schema<ITeam>(
     subdomainTopics: {
       type: Array,
     },
+    teamColor: {
+      type: String,
+    }
   },
   {
     timestamps: true,
