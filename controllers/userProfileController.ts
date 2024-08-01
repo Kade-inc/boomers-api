@@ -30,7 +30,10 @@ const s3 = new S3Client({
 //access public
 export const getProfile = asyncHandler(async (req: Request, res: Response) => {
   try {
+    console.log("HERE")
     const profile = await UserProfile.findOne({ user_id: req.params.id });
+
+    console.log("PROFIL: ", profile)
     if (!profile) {
       res.status(404).json({ message: "User profile does not exist" });
       return;
@@ -40,8 +43,14 @@ export const getProfile = asyncHandler(async (req: Request, res: Response) => {
       Key: profile?.profile_picture,
     };
     const command = new GetObjectCommand(getObjectParams);
-    const url = await getSignedUrl(s3, command, { expiresIn: 3600 });
-    profile.profile_picture = url;
+    // const url = await getSignedUrl(s3, command, { expiresIn: 3600 });
+    // console.log("URL: ", url)
+    // if (url) {
+    //   profile.profile_picture = url;
+    // } else {
+    //   console.log("HAPAss")
+    // }
+  
 
     res.status(200).json({
       successful: true,
