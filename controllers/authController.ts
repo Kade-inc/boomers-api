@@ -81,10 +81,10 @@ const logInUser = asyncHandler(async (req: Request, res: Response) => {
       //   }
       // );
 
-      const accesToken = signAccessToken(user)
+      const accessToken = signAccessToken(user)
       const refreshToken = signRefreshToken(user)
 
-      res.status(200).json({ message: "Log in successful", accesToken, refreshToken });
+      res.status(200).json({ message: "Log in successful", accessToken, refreshToken });
 
     
   } catch (error: any) {
@@ -188,10 +188,10 @@ export const refreshToken = asyncHandler(
       console.log("HEREs")
 
       console.log("USERKRJRKJ: ", user)
-      const accesToken = await signAccessToken(user)
-      console.log("ASS: ", accesToken)
+      const accessToken = await signAccessToken(user)
+      console.log("ASS: ", accessToken)
       const refToken = await signRefreshToken(user)
-      res.status(201).json({accesToken: accesToken, refreshToken: refToken})
+      res.status(201).json({accessToken: accessToken, refreshToken: refToken})
     }
     catch(error:any) {
       console.log("RERROR: ", error.message)

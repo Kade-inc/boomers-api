@@ -15,7 +15,7 @@ export const signAccessToken = (user:any) => {
       },
       process.env.ACCESS_TOKEN_SECRET!,
       {
-        expiresIn: "30s",
+        expiresIn: "1h",
         audience: user[0]._id.toString()
       }
     );
