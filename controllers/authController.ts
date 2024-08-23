@@ -80,14 +80,14 @@ const logInUser = asyncHandler(async (req: Request, res: Response) => {
       //     expiresIn: "1h",
       //   }
       // );
-
-      const accessToken = signAccessToken(user)
-      const refreshToken = signRefreshToken(user)
+      const accessToken = signAccessToken(user[0])
+      const refreshToken = signRefreshToken(user[0])
 
       res.status(200).json({ message: "Log in successful", accessToken, refreshToken });
 
     
   } catch (error: any) {
+    res.status(400)
     throw new Error(error);
   }
 });
@@ -182,19 +182,19 @@ export const refreshToken = asyncHandler(
     try {
       const { refreshToken } = req.body
 
-      if (!refreshToken) throw new Error("Please put a refresh token");
+      if (!refreshToken) {
+        res.status(400)
+        throw new Error("Please put a refresh token")
+      }
 
       const user = await verifyRefreshToken(refreshToken)
-      console.log("HEREs")
 
-      console.log("USERKRJRKJ: ", user)
       const accessToken = await signAccessToken(user)
-      console.log("ASS: ", accessToken)
       const refToken = await signRefreshToken(user)
       res.status(201).json({accessToken: accessToken, refreshToken: refToken})
     }
     catch(error:any) {
-      console.log("RERROR: ", error.message)
+      res.status(400)
       throw new Error(error)
     }
   }
