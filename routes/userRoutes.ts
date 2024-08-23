@@ -8,7 +8,7 @@ import registerUser, {
   resetPassword,
   verifyUser,
 } from "../controllers/userController";
-import logInUser, { verifyUserCode } from "../controllers/authController";
+import logInUser, { refreshToken, verifyUserCode } from "../controllers/authController";
 import validateToken from "../middleware/validateTokenHandler";
 
 const userRouter = express.Router();
@@ -319,5 +319,8 @@ userRouter.post("/forgot-password", forgotPassword);
  *         description: Internal server error
  */
 userRouter.post("/reset-password", resetPassword);
+
+
+userRouter.post("/refresh-token", refreshToken)
 
 export default userRouter;

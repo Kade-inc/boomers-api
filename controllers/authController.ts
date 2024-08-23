@@ -5,6 +5,7 @@ import User from "../models/userModel";
 import UserLoginCode from "../models/userLoginCodeModel";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
+import { signAccessToken, signRefreshToken, verifyRefreshToken } from "../helpers/jwtHelper";
 
 dotenv.config();
 //@desc Sign in a user
@@ -66,27 +67,31 @@ const logInUser = asyncHandler(async (req: Request, res: Response) => {
 
     // res.status(200).json({ message: "Log in successful", authCode });
     // Create a JWT token with an expiration time of 1 hour
-      const token = jwt.sign(
-        {
-          user: {
-            phoneNumber: user[0].phoneNumber,
-            email: user[0].email,
-            id: user[0]._id,
-          },
-        },
-        process.env.ACCESS_TOKEN_SECRET!,
-        {
-          expiresIn: "1h",
-        }
-      );
+      // const token = jwt.sign(
+      //   {
+      //     user: {
+      //       phoneNumber: user[0].phoneNumber,
+      //       email: user[0].email,
+      //       id: user[0]._id,
+      //     },
+      //   },
+      //   process.env.ACCESS_TOKEN_SECRET!,
+      //   {
+      //     expiresIn: "1h",
+      //   }
+      // );
+      const accessToken = signAccessToken(user[0])
+      const refreshToken = signRefreshToken(user[0])
 
-      res.status(200).json({ message: "Log in successful", token });
+      res.status(200).json({ message: "Log in successful", accessToken, refreshToken });
 
     
   } catch (error: any) {
+    res.status(400)
     throw new Error(error);
   }
 });
+
 
 //@desc Verify Auth Code
 //@route POST /api/users/verify-code
@@ -170,6 +175,31 @@ export const verifyUserCode = asyncHandler(
     }
   }
 );
+
+
+export const refreshToken = asyncHandler(
+  async(req: Request, res: Response) => {
+    try {
+      const { refreshToken } = req.body
+
+      if (!refreshToken) {
+        res.status(400)
+        throw new Error("Please put a refresh token")
+      }
+
+      const user = await verifyRefreshToken(refreshToken)
+
+      const accessToken = await signAccessToken(user)
+      const refToken = await signRefreshToken(user)
+      res.status(201).json({accessToken: accessToken, refreshToken: refToken})
+    }
+    catch(error:any) {
+      res.status(400)
+      throw new Error(error)
+    }
+  }
+ 
+)
 
 // Function to generate a random authentication code
 const generateAuthCode = () => {
