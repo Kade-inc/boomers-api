@@ -33,7 +33,11 @@ if (NODE_ENV === "production") {
 
 const connectDb = async () => {
   try {
-    const connect = await mongoose.connect(config.mongo.url);
+    const connect = await mongoose.connect(config.mongo.url, {
+      serverSelectionTimeoutMS: 80000,
+      socketTimeoutMS: 0,
+      connectTimeoutMS: 0
+    });
     console.log(
       "Database connected: ",
       connect.connection.host,
