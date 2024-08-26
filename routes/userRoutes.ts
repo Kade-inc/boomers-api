@@ -10,6 +10,7 @@ import registerUser, {
 } from "../controllers/userController";
 import logInUser, { refreshToken, verifyUserCode } from "../controllers/authController";
 import validateToken from "../middleware/validateTokenHandler";
+import loginLimiter from "../middleware/loginLimiter";
 
 const userRouter = express.Router();
 
@@ -85,7 +86,7 @@ userRouter.post("/register", registerUser);
  *      500:
  *        description: Server Error
  */
-userRouter.post("/login", logInUser);
+userRouter.post("/login", loginLimiter, logInUser);
 
 /**
  * @openapi
