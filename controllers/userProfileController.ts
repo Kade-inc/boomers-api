@@ -30,33 +30,35 @@ const s3 = new S3Client({
 //access public
 export const getProfile = asyncHandler(async (req: Request, res: Response) => {
   try {
-    console.log("HERE")
     const profile = await UserProfile.findOne({ user_id: req.params.id });
 
-    console.log("PROFIL: ", profile)
     if (!profile) {
       res.status(404).json({ message: "User profile does not exist" });
       return;
     }
-    const getObjectParams = {
-      Bucket: bucketName,
-      Key: profile?.profile_picture,
-    };
-    const command = new GetObjectCommand(getObjectParams);
-    // const url = await getSignedUrl(s3, command, { expiresIn: 3600 });
-    // console.log("URL: ", url)
-    // if (url) {
-    //   profile.profile_picture = url;
-    // } else {
-    //   console.log("HAPAss")
-    // }
-  
-
+    if (profile.profile_picture) {
+      const getObjectParams = {
+        Bucket: bucketName,
+        Key: profile?.profile_picture,
+      };
+      const command = new GetObjectCommand(getObjectParams);
+      const url = await getSignedUrl(s3, command, { expiresIn: 3600 });
+      
+      if (url) {
+        profile.profile_picture = url;
+      } else {
+        console.log("Failed to generate URL");
+      }
+    } else {
+      console.log("No profile picture found.");
+    }
+    
     res.status(200).json({
       successful: true,
       profile,
     });
   } catch (error: any) {
+    res.status(400)
     throw new Error(error);
   }
 });
@@ -142,7 +144,7 @@ export const updateUserProfile = asyncHandler(async (req: any, res) => {
 
       const command = new PutObjectCommand(params);
 
-      await s3.send(command);
+      const updatedImage = await s3.send(command);
 
       await UserProfile.findByIdAndUpdate(
         profile._id,
@@ -153,7 +155,7 @@ export const updateUserProfile = asyncHandler(async (req: any, res) => {
           new: true,
         }
       );
-      res.status(200).json({ message: "Image updated" });
+      res.status(200).json({ message: "Image updated", data: updatedImage });
       return;
     }
 
