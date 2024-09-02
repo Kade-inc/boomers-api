@@ -155,7 +155,24 @@ export const updateUserProfile = asyncHandler(async (req: any, res) => {
           new: true,
         }
       );
-      res.status(200).json({ message: "Image updated", data: updatedImage });
+      
+      const updatedProfile = await UserProfile.findByIdAndUpdate(
+        profile._id,
+        {
+          firstName: updateProfileBody.firstName,
+          lastName: updateProfileBody.lastName,
+          phoneNumber: updateProfileBody.phoneNumber,
+          bio: updateProfileBody.bio,
+          interests: updateProfileBody.interests,
+          gender: updateProfileBody.gender,
+          profile_picture: randomImageName(),
+        },
+        {
+          new: true,
+        }
+      );
+
+      res.status(200).json({ message: "Profile updated!", data: updatedProfile });
       return;
     }
 
