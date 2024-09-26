@@ -15,6 +15,7 @@ import TeamDomain from "../../models/teamDomainModel";
 import TeamSubDomain from "../../models/teamSubdomainModel";
 import DomainTopic from "../../models/domainTopicModel";
 import UserProfile from "../../models/userProfileModel";
+import User from "../../models/userModel";
 
 const randomImageName = (bytes = 32) =>
   crypto.randomBytes(bytes).toString("hex");
@@ -171,13 +172,45 @@ export const getAllTeams = asyncHandler(async (req: Request, res: Response) => {
 //access public
 export const getTeam = asyncHandler(async (req: Request, res: Response) => {
   try {
-    const team = await Team.findOne({ _id: req.params.id });
+    const team:any = await Team.findOne({ _id: req.params.id });
+
+    const teamMembers = await TeamMember.find({team_id: req.params.id})
+
+    const users:any = await User.find({})
+
+    if (!users) {
+      res.status(400).json({ message: "No users in the system!" });
+      return;
+    }
+
+    // Map over the teamMembers array and match the user_id to users array
+    const teamMembersWithDetails = teamMembers.map((member:any) => {
+      // Find the corresponding user based on user_id
+      const user = users.find((user:any) => user._id.toString() === member.user_id.toString());
+
+      // Return the team member with user details
+      if (user) {
+        return {
+          _id: user._id,
+          username: user.username,
+          email: user.email,
+          profile: user.profile
+        }
+      } else {
+        return null
+      }
+    });
 
     if (!team) {
       res.status(404).json({ message: "Team does not exist" });
       return;
     }
-    res.status(200).json(team);
+
+    const teamWithMembers = {
+      ...team._doc,
+      members: teamMembersWithDetails
+    }
+    res.status(200).json({message: "successful", data: teamWithMembers});
   } catch (error: any) {
     throw new Error(error);
   }
