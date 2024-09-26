@@ -178,6 +178,8 @@ export const getTeam = asyncHandler(async (req: Request, res: Response) => {
 
     const users:any = await User.find({})
 
+    const userProfiles = await UserProfile.find({})
+
     if (!users) {
       res.status(400).json({ message: "No users in the system!" });
       return;
@@ -194,7 +196,8 @@ export const getTeam = asyncHandler(async (req: Request, res: Response) => {
           _id: user._id,
           username: user.username,
           email: user.email,
-          profile: user.profile
+          profile: user.profile,
+          profile_picture: null
         }
       } else {
         return null
@@ -205,6 +208,12 @@ export const getTeam = asyncHandler(async (req: Request, res: Response) => {
       res.status(404).json({ message: "Team does not exist" });
       return;
     }
+
+    teamMembersWithDetails.map((member:any) => {
+      const userProfile = userProfiles.find((profile:any) => profile._id.toString() === member.profile.toString());
+      
+      if (userProfile) member.profile_picture = userProfile.profile_picture
+    })
 
     const teamWithMembers = {
       ...team._doc,
