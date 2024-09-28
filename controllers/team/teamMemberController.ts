@@ -248,51 +248,6 @@ export const updateJoinRequest = asyncHandler(
   }
 );
 
-//@desc Fetch team member requests of a team
-//@route GET /api/team-member/requests/:id
-//access private
-export const fetchTeamMemberRequests = asyncHandler(
-  async (req: CustomRequest, res: Response) => {
-    try {
-     
-      const teamMemberRequests = await TeamMemberRequest.find({
-        team_id: req.params.teamId
-      });
-
-      const userIds:any = []
-      teamMemberRequests.map((request:any) => {
-        userIds.push(request.user_id)
-      })
-
-      const userProfiles = await UserProfile.find({user_id: { $in: userIds }})
-
-      // Merging requests with profile data
-      const mergedRequests = teamMemberRequests.map((request: any) => {
-        const userProfile = userProfiles.find(profile => profile.user_id.toString() === request.user_id.toString());
-        
-        // Only include specific fields from the profile
-        const limitedProfile = userProfile
-        ? {
-            user_id: userProfile.user_id,
-            firstName: userProfile.firstName,
-            lastName: userProfile.lastName,
-            username: userProfile.username,
-            profile_picture: userProfile.profile_picture
-          }
-        : {};
-        return {
-          ...request._doc,
-          userProfile: limitedProfile
-        };
-      });
-
-      res.status(200).json({ message: "successful", data: mergedRequests})
-    } catch (error: any) {
-      res.status(400)
-      throw new Error(error);
-    }
-  }
-);
 //@desc Get teams
 //@route GET /api/teams
 //access private
@@ -347,6 +302,52 @@ export const deleteTeamMember = asyncHandler(
       await Team.deleteOne({ _id: req.params.id });
       res.status(200).json(team);
     } catch (error) {}
+  }
+);
+
+//@desc Fetch team member requests of a team
+//@route GET /api/team-member/requests/:id
+//access private
+export const fetchTeamMemberRequests = asyncHandler(
+  async (req: CustomRequest, res: Response) => {
+    try {
+     
+      const teamMemberRequests = await TeamMemberRequest.find({
+        team_id: req.params.teamId
+      });
+
+      const userIds:any = []
+      teamMemberRequests.map((request:any) => {
+        userIds.push(request.user_id)
+      })
+
+      const userProfiles = await UserProfile.find({user_id: { $in: userIds }})
+
+      // Merging requests with profile data
+      const mergedRequests = teamMemberRequests.map((request: any) => {
+        const userProfile = userProfiles.find(profile => profile.user_id.toString() === request.user_id.toString());
+        
+        // Only include specific fields from the profile
+        const limitedProfile = userProfile
+        ? {
+            user_id: userProfile.user_id,
+            firstName: userProfile.firstName,
+            lastName: userProfile.lastName,
+            username: userProfile.username,
+            profile_picture: userProfile.profile_picture
+          }
+        : {};
+        return {
+          ...request._doc,
+          userProfile: limitedProfile
+        };
+      });
+
+      res.status(200).json({ message: "successful", data: mergedRequests})
+    } catch (error: any) {
+      res.status(400)
+      throw new Error(error);
+    }
   }
 );
 
