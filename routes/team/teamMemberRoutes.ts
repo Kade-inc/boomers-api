@@ -8,6 +8,7 @@ import {
 import validateToken from "../../middleware/validateTokenHandler";
 import {
   addTeamMember,
+  fetchTeamMemberRequests,
   joinTeam,
   updateJoinRequest,
 } from "../../controllers/team/teamMemberController";
@@ -222,5 +223,8 @@ teamMemberRouter.delete("/:id", deleteTeam);
  *        description: Server Error
  */
 teamMemberRouter.get("/:id", getTeam);
+
+
+teamMemberRouter.get("/requests/:teamId", fetchTeamMemberRequests)
 
 export default teamMemberRouter;

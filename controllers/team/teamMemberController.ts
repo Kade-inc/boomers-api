@@ -246,6 +246,24 @@ export const updateJoinRequest = asyncHandler(
     }
   }
 );
+
+//@desc Fetch team member requests of a team
+//@route GET /api/team-member/requests/:id
+//access private
+export const fetchTeamMemberRequests = asyncHandler(
+  async (req: CustomRequest, res: Response) => {
+    try {
+     
+      const teamMemberRequests = await TeamMemberRequest.find({
+        team_id: req.params.teamId
+      });
+
+      res.status(200).json({ message: "successful", data: teamMemberRequests})
+    } catch (error: any) {
+      throw new Error(error);
+    }
+  }
+);
 //@desc Get teams
 //@route GET /api/teams
 //access private
