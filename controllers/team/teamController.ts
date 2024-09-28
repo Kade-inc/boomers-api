@@ -180,10 +180,12 @@ export const getTeam = asyncHandler(async (req: Request, res: Response) => {
     }
 
     const teamMembers = await TeamMember.find({team_id: req.params.id})
-
-    const users:any = await User.find({})
-
-    const userProfiles = await UserProfile.find({})
+    const userIds:any = []
+    teamMembers.map((member:any) => {
+      userIds.push(member.user_id)
+    })
+    const users:any = await User.find({_id: { $in: userIds }})
+    const userProfiles = await UserProfile.find({user_id: { $in: userIds }})
 
     if (!users) {
       res.status(400).json({ message: "No users in the system!" });
@@ -497,62 +499,3 @@ export const getTeamRecommendations = asyncHandler(
     }
   }
 );
-
-
-//@desc Get Team
-//@route GET /api/teams/:userid
-//access private
-export const getUserTeam = asyncHandler(async (req: Request, res: Response) => {
-  try {
-    const team:any = await Team.findOne({ _id: req.params.id });
-
-    if (!team) {
-      res.status(404).json({ message: "Team does not exist" });
-      return;
-    }
-
-    const teamMembers = await TeamMember.find({team_id: req.params.id})
-
-    const users:any = await User.find({})
-
-    const userProfiles = await UserProfile.find({})
-
-    if (!users) {
-      res.status(400).json({ message: "No users in the system!" });
-      return;
-    }
-
-    // Map over the teamMembers array and match the user_id to users array
-    const teamMembersWithDetails = teamMembers.map((member:any) => {
-      // Find the corresponding user based on user_id
-      const user = users.find((user:any) => user._id.toString() === member.user_id.toString());
-
-      // Return the team member with user details
-      if (user) {
-        return {
-          _id: user._id,
-          username: user.username,
-          email: user.email,
-          profile: user.profile,
-          profile_picture: null
-        }
-      } else {
-        return null
-      }
-    });
-
-    teamMembersWithDetails.map((member:any) => {
-      const userProfile = userProfiles.find((profile:any) => profile._id.toString() === member.profile.toString());
-      
-      if (userProfile) member.profile_picture = userProfile.profile_picture
-    })
-
-    const teamWithMembers = {
-      ...team._doc,
-      members: teamMembersWithDetails
-    }
-    res.status(200).json({message: "successful", data: teamWithMembers});
-  } catch (error: any) {
-    throw new Error(error);
-  }
-});
