@@ -6,6 +6,7 @@ import User from "../../models/userModel";
 import { CustomRequest } from "../../middleware/validateTokenHandler";
 import TeamMember from "../../models/teamMemberModel";
 import TeamMemberRequest from "../../models/teamMemberRequestModel";
+import UserProfile from "../../models/userProfileModel";
 
 //@desc Create team
 //@route POST /api/team-member/create
@@ -258,8 +259,36 @@ export const fetchTeamMemberRequests = asyncHandler(
         team_id: req.params.teamId
       });
 
-      res.status(200).json({ message: "successful", data: teamMemberRequests})
+      const userIds:any = []
+      teamMemberRequests.map((request:any) => {
+        userIds.push(request.user_id)
+      })
+
+      const userProfiles = await UserProfile.find({user_id: { $in: userIds }})
+
+      // Merging requests with profile data
+      const mergedRequests = teamMemberRequests.map((request: any) => {
+        const userProfile = userProfiles.find(profile => profile.user_id.toString() === request.user_id.toString());
+        
+        // Only include specific fields from the profile
+        const limitedProfile = userProfile
+        ? {
+            user_id: userProfile.user_id,
+            firstName: userProfile.firstName,
+            lastName: userProfile.lastName,
+            username: userProfile.username,
+            profile_picture: userProfile.profile_picture
+          }
+        : {};
+        return {
+          ...request._doc,
+          userProfile: limitedProfile
+        };
+      });
+
+      res.status(200).json({ message: "successful", data: mergedRequests})
     } catch (error: any) {
+      res.status(400)
       throw new Error(error);
     }
   }
