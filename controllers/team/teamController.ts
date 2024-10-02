@@ -214,7 +214,11 @@ export const getTeam = asyncHandler(async (req: Request, res: Response) => {
     teamMembersWithDetails.map((member:any) => {
       const userProfile = userProfiles.find((profile:any) => profile._id.toString() === member.profile.toString());
       
-      if (userProfile) member.profile_picture = userProfile.profile_picture
+      if (userProfile) {
+        member.profile_picture = userProfile.profile_picture
+        member.firstName = userProfile.firstName,
+        member.lastName = userProfile.lastName
+      }
     })
 
     const teamWithMembers = {
