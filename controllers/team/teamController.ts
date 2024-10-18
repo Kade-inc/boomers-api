@@ -38,7 +38,7 @@ const s3 = new S3Client({
 export const createTeam = asyncHandler(
   async (req: CustomRequest, res: Response) => {
     try {
-      const { name, teamUsername, domain, subDomain, subDomainTopics } =
+      const { name, teamUsername, domain, subDomain, subDomainTopics, teamColor } =
         req.body;
       if (!name.trim() || !domain.trim()) {
         res.status(400);
@@ -111,6 +111,7 @@ export const createTeam = asyncHandler(
           subdomain: subDomain,
           subdomainTopics: subDomainTopics,
           displayImage: randomImageName(),
+          teamColor: teamColor
         });
 
         await TeamMember.create({
@@ -131,6 +132,7 @@ export const createTeam = asyncHandler(
         subdomain: subDomain,
         subdomainTopics: subDomainTopics,
         owner_id: req.user.id,
+        teamColor: teamColor
       });
 
       await TeamMember.create({
