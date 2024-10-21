@@ -31,7 +31,6 @@ const s3 = new S3Client({
 export const getProfile = asyncHandler(async (req: Request, res: Response) => {
   try {
     const profile = await UserProfile.findOne({ user_id: req.params.id });
-
     if (!profile) {
       res.status(404).json({ message: "User profile does not exist" });
       return;
@@ -99,8 +98,24 @@ export const updateUserProfile = asyncHandler(async (req: any, res) => {
 
     if (bio && bio.trim().length > 0) updateProfileBody.bio = bio.trim();
 
-    if (interests && typeof interests === "object")
+    if (interests && typeof interests === "object") {}
       updateProfileBody.interests = interests;
+
+
+    //   When updating interests
+    //   {
+    //     "interests": {
+    //         "domain": [
+    //             "Software Engineering"
+    //         ],
+    //         "subdomain": [
+    //             "Frontend"
+    //         ],
+    //         "domainTopics": [
+    //             "React Js"
+    //         ]
+    //     }
+    // }
 
     // if (
     //   !interests &&

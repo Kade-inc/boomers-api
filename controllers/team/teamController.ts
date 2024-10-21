@@ -123,8 +123,6 @@ export const createTeam = asyncHandler(
         return;
       }
 
-      console.log("SUB: ", subDomainTopics);
-
       const team = await Team.create({
         name,
         teamUsername,
@@ -400,7 +398,6 @@ export const addDomain = asyncHandler(async (req: Request, res: Response) => {
     const domain = await TeamDomain.create({ name, commonName });
     res.status(201).json(domain);
   } catch (error: any) {
-    console.log(error);
     res.status(400).json({ error: error });
   }
 });
@@ -440,7 +437,6 @@ export const addSubDomain = asyncHandler(
       });
       res.status(201).json(domain);
     } catch (error: any) {
-      console.log(error);
       res.status(400).json({ error: error });
     }
   }
@@ -464,7 +460,6 @@ export const addDomainTopic = asyncHandler(
       });
       res.status(201).json(domainTopic);
     } catch (error: any) {
-      console.log(error);
       res.status(400).json({ error: error });
     }
   }
@@ -480,25 +475,30 @@ export const getTeamRecommendations = asyncHandler(
       const userProfile: any = await UserProfile.findOne({ user_id: userId });
 
       let teams: any = [];
-      if (Object.keys(userProfile.interests).length > 0) {
-        if (userProfile.interests.subDomains?.length > 0) {
-          if (userProfile.interests.subTopics?.length > 0) {
+      // Safely check if interests, subDomains, and subTopics exist
+      const interests = userProfile?.interests ?? {};
+      const subdomains = interests.subdomain ?? [];
+      const domainTopics = interests.domainTopics ?? [];
+      const domains = interests.domain ?? [];
+
+      if (Object.keys(interests).length > 0) {
+        if (subdomains.length > 0) {
+          if (domainTopics.length > 0) {
             teams = await Team.find({
-              subdomainTopics: { $in: userProfile.interests.subTopics },
+              subdomainTopics: { $in: domainTopics},
             });
           } else {
             teams = await Team.find({
-              subdomain: { $in: userProfile.interests.subDomains },
+              subdomain: { $in: subdomains },
             });
           }
         } else {
           teams = await Team.find({
-            domain: { $in: userProfile.interests.domains },
+            domain: { $in: domains },
           });
         }
-      } else {
-        teams = await Team.find();
-      }
+      } 
+
       res.status(200).json({ data: teams });
     } catch (error: any) {
       res.status(400).json({ error: error });
