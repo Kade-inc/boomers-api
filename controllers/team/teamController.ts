@@ -154,7 +154,13 @@ export const getAllTeams = asyncHandler(async (req: Request, res: Response) => {
     let { name } = req.query;
 
     if (req.query.userId) {
-      teams = await Team.find({ owner_id: req.query.userId });
+      const teamMembers = await TeamMember.find({ user_id: req.query.userId })
+
+      const teamIds:string[] = []
+      teamMembers.map((member:any) => {
+        teamIds.push(member.team_id)
+      })
+      teams = await Team.find({_id: { $in: teamIds }})
     } else if (req.query.name) {
       teams = await Team.find({ name: { $regex: ".*" + name + ".*" } });
     } else {
