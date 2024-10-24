@@ -225,33 +225,28 @@ const generateAuthCode = () => {
  */
 export const logout = asyncHandler( async(req: Request, res: Response) => {
   try {
-    console.log("CALLED")
-    const token = req.cookies.token;
-    console.log("TOKEN: ", token)
-    const authHeader = req.headers['cookie']; // get the session cookie from request header
-    console.log("AUTH: ", authHeader)
-    if (!authHeader) {
-      res.sendStatus(204); // No content
-      return
-    }
-    const cookie = authHeader.split('=')[1]; // If there is, split the cookie string to get the actual jwt token
-    console.log("COOKIE: ", cookie)
-    const accessToken = cookie.split(';')[0];
-    const checkIfBlacklisted = await Blacklist.findOne({ token: accessToken }); // Check if that token is blacklisted
+
+    // TODO: 
+    // Add logic for getting token from the cookie
+    // const token = req.cookies.token;
+
+    const { token } = req.body
+    const checkIfBlacklisted = await Blacklist.findOne({ token: token }); // Check if that token is blacklisted
     // if true, send a no content response.
     if (checkIfBlacklisted) {
+      console.log("NDANI")
       res.sendStatus(204);
       return
     }
 
     // otherwise blacklist token
     const newBlacklist = new Blacklist({
-      token: accessToken,
+      token: token,
     });
 
     await newBlacklist.save();
     // Also clear request cookie on client
-    res.setHeader('Clear-Site-Data', '"cookies"');
+    // res.setHeader('Clear-Site-Data', '"cookies"');
     res.status(200).json({ message: 'You are logged out!' });
   } catch (err) {
     res.status(500).json({

@@ -18,10 +18,8 @@ const validateToken = asyncHandler(
       const checkIfBlacklisted = await Blacklist.findOne({ token: token }); // Check if that token is blacklisted
       // if true, send an unathorized message, asking for a re-authentication.
       if (checkIfBlacklisted) {
-          res
-              .status(401)
-              .json({ message: "This session has expired. Please login" });
-              return
+          res.status(401)
+          throw new Error("This session has expired. Please login");
       }
       // if token has not been blacklisted, verify with jwt to see if it has been tampered with or not.
       jwt.verify(
