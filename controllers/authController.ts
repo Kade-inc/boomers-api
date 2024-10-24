@@ -234,7 +234,6 @@ export const logout = asyncHandler( async(req: Request, res: Response) => {
     const checkIfBlacklisted = await Blacklist.findOne({ token: token }); // Check if that token is blacklisted
     // if true, send a no content response.
     if (checkIfBlacklisted) {
-      console.log("NDANI")
       res.sendStatus(204);
       return
     }
