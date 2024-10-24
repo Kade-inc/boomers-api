@@ -8,7 +8,7 @@ import registerUser, {
   resetPassword,
   verifyUser,
 } from "../controllers/userController";
-import logInUser, { refreshToken, verifyUserCode } from "../controllers/authController";
+import logInUser, { logout, refreshToken, verifyUserCode } from "../controllers/authController";
 import validateToken from "../middleware/validateTokenHandler";
 import loginLimiter from "../middleware/loginLimiter";
 
@@ -323,5 +323,9 @@ userRouter.post("/reset-password", resetPassword);
 
 
 userRouter.post("/refresh-token", refreshToken)
+
+userRouter.post("/logout", logout)
+
+
 
 export default userRouter;

@@ -6,6 +6,7 @@ import UserLoginCode from "../models/userLoginCodeModel";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from "../helpers/jwtHelper";
+import Blacklist from "../models/blacklistModel";
 
 dotenv.config();
 //@desc Sign in a user
@@ -83,6 +84,14 @@ const logInUser = asyncHandler(async (req: Request, res: Response) => {
       const accessToken = signAccessToken(user[0])
       const refreshToken = signRefreshToken(user[0])
 
+      // let options:any = {
+      //   maxAge: 365 * 24 * 60 * 60 * 1000, // would expire in 20minutes
+      //   httpOnly: true, // The cookie is only accessible by the web server
+      //   secure: true,
+      //   sameSite: "None",
+      // };
+   
+      // res.cookie("token", accessToken, options); 
       res.status(200).json({ message: "Log in successful", accessToken, refreshToken });
 
     
@@ -205,5 +214,53 @@ export const refreshToken = asyncHandler(
 const generateAuthCode = () => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
+
+
+
+
+/**
+ * @route POST /auth/logout
+ * @desc Logout user
+ * @access Public
+ */
+export const logout = asyncHandler( async(req: Request, res: Response) => {
+  try {
+    console.log("CALLED")
+    const token = req.cookies.token;
+    console.log("TOKEN: ", token)
+    const authHeader = req.headers['cookie']; // get the session cookie from request header
+    console.log("AUTH: ", authHeader)
+    if (!authHeader) {
+      res.sendStatus(204); // No content
+      return
+    }
+    const cookie = authHeader.split('=')[1]; // If there is, split the cookie string to get the actual jwt token
+    console.log("COOKIE: ", cookie)
+    const accessToken = cookie.split(';')[0];
+    const checkIfBlacklisted = await Blacklist.findOne({ token: accessToken }); // Check if that token is blacklisted
+    // if true, send a no content response.
+    if (checkIfBlacklisted) {
+      res.sendStatus(204);
+      return
+    }
+
+    // otherwise blacklist token
+    const newBlacklist = new Blacklist({
+      token: accessToken,
+    });
+
+    await newBlacklist.save();
+    // Also clear request cookie on client
+    res.setHeader('Clear-Site-Data', '"cookies"');
+    res.status(200).json({ message: 'You are logged out!' });
+  } catch (err) {
+    res.status(500).json({
+      status: 'error',
+      message: 'Internal Server Error',
+    });
+  }
+
+})
+
 
 export default logInUser;

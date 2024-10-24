@@ -7,6 +7,7 @@ import swaggerDocs from "./swagger";
 
 import passport from "passport";
 import dotenv from "dotenv";
+import cookieParser from "cookie-parser";
 const cookieSession = require("cookie-session");
 require("./config/passport-setup");
 import userProfileRouter from "./routes/userProfileRoutes";
@@ -28,6 +29,7 @@ const session = require("express-session");
 const port = process.env.PORT || 5001;
 
 app.use(cors())
+app.use(cookieParser());
 app.use(express.json());
 // //Setting up cookies
 // app.use(
