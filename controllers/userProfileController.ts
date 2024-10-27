@@ -150,9 +150,11 @@ export const updateUserProfile = asyncHandler(async (req: any, res) => {
       const buffer = await sharp(req.file.buffer)
         .resize({ height: 400, width: 400, fit: "contain" })
         .toBuffer();
+
+      const imageKey = randomImageName()
       const params = {
         Bucket: bucketName,
-        Key: randomImageName(),
+        Key: imageKey,
         Body: buffer,
         ContentType: req.file.mimetype,
       };
@@ -164,7 +166,7 @@ export const updateUserProfile = asyncHandler(async (req: any, res) => {
       await UserProfile.findByIdAndUpdate(
         profile._id,
         {
-          profile_picture: randomImageName(),
+          profile_picture: imageKey,
         },
         {
           new: true,
@@ -180,7 +182,7 @@ export const updateUserProfile = asyncHandler(async (req: any, res) => {
           bio: updateProfileBody.bio,
           interests: updateProfileBody.interests,
           gender: updateProfileBody.gender,
-          profile_picture: randomImageName(),
+          profile_picture: imageKey,
         },
         {
           new: true,
