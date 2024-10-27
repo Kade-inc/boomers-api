@@ -147,15 +147,15 @@ export const updateUserProfile = asyncHandler(async (req: any, res) => {
 
     if (req.file) {
       //resize image
-      const buffer = await sharp(req.file.buffer)
-        .resize({ height: 400, width: 400, fit: "contain" })
-        .toBuffer();
+      // const buffer = await sharp(req.file.buffer)
+      //   .resize({ height: 400, width: 400, fit: "contain" })
+      //   .toBuffer();
 
       const imageKey = randomImageName()
       const params = {
         Bucket: bucketName,
         Key: imageKey,
-        Body: buffer,
+        Body: req.file.buffer,
         ContentType: req.file.mimetype,
       };
 
