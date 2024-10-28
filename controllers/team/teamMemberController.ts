@@ -299,7 +299,6 @@ export const fetchTeamMemberRequests = asyncHandler(
       // Merging requests with profile data
       const mergedRequests = teamMemberRequests.map((request: any) => {
         const userProfile = userProfiles.find(profile => profile.user_id.toString() === request.user_id.toString());
-        
         // Only include specific fields from the profile
         const limitedProfile = userProfile
         ? {
@@ -307,6 +306,7 @@ export const fetchTeamMemberRequests = asyncHandler(
             firstName: userProfile.firstName,
             lastName: userProfile.lastName,
             username: userProfile.username,
+            interests: userProfile.interests,
             profile_picture: `${process.env.S3_BUCKET_PREFIX}${userProfile.profile_picture}`
           }
         : {};
