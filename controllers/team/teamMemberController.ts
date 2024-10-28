@@ -334,7 +334,7 @@ export const fetchTeamMemberRequests = asyncHandler(
             firstName: userProfile.firstName,
             lastName: userProfile.lastName,
             username: userProfile.username,
-            profile_picture: userProfile.profile_picture
+            profile_picture: `${process.env.S3_BUCKET_PREFIX}${userProfile.profile_picture}`
           }
         : {};
         return {

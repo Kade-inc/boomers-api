@@ -221,7 +221,7 @@ export const getTeam = asyncHandler(async (req: Request, res: Response) => {
       const userProfile = userProfiles.find((profile:any) => profile._id.toString() === member.profile.toString());
       
       if (userProfile) {
-        member.profile_picture = userProfile.profile_picture
+        member.profile_picture = userProfile.profile_picture ? `${process.env.S3_BUCKET_PREFIX}${userProfile.profile_picture}` : null
         member.firstName = userProfile.firstName,
         member.lastName = userProfile.lastName
       }
