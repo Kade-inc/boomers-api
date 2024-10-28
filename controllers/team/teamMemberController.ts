@@ -248,59 +248,32 @@ export const updateJoinRequest = asyncHandler(
   }
 );
 
-//@desc Get teams
-//@route GET /api/teams
-//access private
-export const getTeamMembers = asyncHandler(
-  async (req: Request, res: Response) => {
-    try {
-      const teams = await Team.find({});
-
-      res.status(200).json({ message: "successful", data: teams });
-    } catch (error: any) {
-      throw new Error(error);
-    }
-  }
-);
-
-//@desc Get Team
-//@route GET /api/teams/:id
-//access public
-export const getTeamMember = asyncHandler(
-  async (req: Request, res: Response) => {
-    try {
-      const team = await Team.findOne({ _id: req.params.id });
-
-      if (!team) {
-        res.status(404).json({ message: "Team does not exist" });
-        return;
-      }
-      res.status(200).json(team);
-    } catch (error: any) {
-      throw new Error(error);
-    }
-  }
-);
 
 //@desc Delete team
-//@route DELETE /api/teams/:id
+//@route DELETE /api/team-member?teamId=teamId&userId=userId
 //access private
 export const deleteTeamMember = asyncHandler(
-  async (req: Request, res: Response) => {
+  async (req: CustomRequest, res: Response) => {
     try {
-      const team = await Team.findById(req.params.id);
-      if (!team) {
-        res.status(404);
-        throw new Error("Team not found");
-      }
-      //   if(contact.user_id.toString() !== req.user.id) {
-      //     res.status(403)
-      //     throw new Error("User doesn't have permission to update other user contacts")
-      // }
+   
+      const { teamId, userId } = req.query
 
-      // await Contact.remove()
-      await Team.deleteOne({ _id: req.params.id });
-      res.status(200).json(team);
+      const teamMember = await TeamMember.findOne({
+        user_id: userId,
+        team_id: teamId
+      });
+      if (!teamMember) {
+        res.status(404).json({message: "Team member not found"});
+        return
+      }
+      if (req.user.id !== teamMember.owner_id.toString()) {
+        res.status(403).json({message: "You do not have permission to remove the team member from the team."});
+        return
+      }
+      await TeamMember.findByIdAndDelete(teamMember?._id);
+      res.status(204).json({
+        message: "Team member removed successfully"
+      });
     } catch (error) {}
   }
 );
