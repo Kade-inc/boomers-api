@@ -43,15 +43,8 @@ export const getProfile = asyncHandler(async (req: Request, res: Response) => {
       const command = new GetObjectCommand(getObjectParams);
       const url = await getSignedUrl(s3, command, { expiresIn: 3600 });
       
-      if (url) {
-        profile.profile_picture = url;
-      } else {
-        console.log("Failed to generate URL");
-      }
-    } else {
-      console.log("No profile picture found.");
-    }
-    
+      if (url) profile.profile_picture = url;
+    } 
     res.status(200).json({
       successful: true,
       profile,
