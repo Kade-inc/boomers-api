@@ -18,6 +18,7 @@ import challengeRouter from "./routes/challenges/challengeRoutes";
 import chatRouter from "./routes/chatRoutes";
 import messageRouter from "./routes/messageRoutes";
 import adviceRouter from "./routes/adviceRoutes";
+import domainRouter from "./routes/domainRoutes";
 
 const cors = require('cors')
 dotenv.config();
@@ -58,6 +59,7 @@ app.use("/api/challenges", challengeRouter);
 app.use("/api/chats", chatRouter);
 app.use("/api/messages", messageRouter);
 app.use("/api/advice", adviceRouter)
+app.use("/api/domains", domainRouter)
 app.use(errorHandler);
 app.disable("x-powered-by"); // less hackers know about our stack
 
