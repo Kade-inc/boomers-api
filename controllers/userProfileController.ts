@@ -66,7 +66,7 @@ export const updateUserProfile = asyncHandler(async (req: any, res) => {
       throw new Error("User profile not found");
     }
 
-    const { phoneNumber, firstName, lastName, bio, interests, gender } =
+    const { phoneNumber, firstName, lastName, bio, interests, gender, job, location } =
       req.body;
     let updateProfileBody = {
       phoneNumber: profile.phoneNumber,
@@ -75,6 +75,8 @@ export const updateUserProfile = asyncHandler(async (req: any, res) => {
       bio: profile.bio,
       interests: profile.interests,
       gender: profile.gender,
+      job: profile.job,
+      location: profile.location
     };
 
     // if (username && username.trim().length > 0)
@@ -93,6 +95,12 @@ export const updateUserProfile = asyncHandler(async (req: any, res) => {
 
     if (interests && typeof interests === "object") {}
       updateProfileBody.interests = interests;
+
+      if (job && job.trim().length > 0)
+        updateProfileBody.job = job.trim();
+
+      if (location && location.trim().length > 0)
+        updateProfileBody.location = location.trim();
 
 
     //   When updating interests
@@ -176,6 +184,8 @@ export const updateUserProfile = asyncHandler(async (req: any, res) => {
           interests: updateProfileBody.interests,
           gender: updateProfileBody.gender,
           profile_picture: imageKey,
+          job: updateProfileBody.job,
+          location: updateProfileBody.location
         },
         {
           new: true,
@@ -195,6 +205,8 @@ export const updateUserProfile = asyncHandler(async (req: any, res) => {
         bio: updateProfileBody.bio,
         interests: updateProfileBody.interests,
         gender: updateProfileBody.gender,
+        job: updateProfileBody.job,
+        location: updateProfileBody.location
       },
       {
         new: true,

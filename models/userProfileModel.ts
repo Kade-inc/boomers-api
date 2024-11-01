@@ -12,6 +12,8 @@ interface IUserProfile {
   username: string;
   gender: string;
   profile_picture: string;
+  job: string;
+  location: string;
 }
 
 const userProfileSchema = new Schema<IUserProfile>(
@@ -57,6 +59,14 @@ const userProfileSchema = new Schema<IUserProfile>(
       type: String,
       default: null,
     },
+    job: {
+      type: String,
+      default: null
+    },
+    location: {
+      type: String,
+      default: null
+    }
   },
   {
     timestamps: true,
