@@ -49,7 +49,7 @@ export const createTeam = asyncHandler(
 
       if (teamExists) {
         res.status(409);
-        throw new Error("Team already exists");
+        throw new Error("Team already exists. Try a different name/nickname.");
       }
 
       const domainExists = await TeamDomain.findOne({ name: domain });
