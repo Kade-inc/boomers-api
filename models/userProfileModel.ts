@@ -11,7 +11,7 @@ interface IUserProfile {
   user_id: any;
   username: string;
   gender: string;
-  profile_picture: string;
+  profile_picture: string | null;
   job: string;
   location: string;
 }

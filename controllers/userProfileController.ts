@@ -174,7 +174,7 @@ export const updateUserProfile = asyncHandler(async (req: any, res) => {
         }
       );
       
-      const updatedProfile = await UserProfile.findByIdAndUpdate(
+      let updatedProfile = await UserProfile.findByIdAndUpdate(
         profile._id,
         {
           firstName: updateProfileBody.firstName,
@@ -192,6 +192,10 @@ export const updateUserProfile = asyncHandler(async (req: any, res) => {
         }
       );
 
+      if (updatedProfile) {
+        updatedProfile.profile_picture = updatedProfile?.profile_picture ? `${process.env.S3_BUCKET_PREFIX}${updatedProfile.profile_picture}` : null
+      }
+      
       res.status(200).json({ message: "Profile updated!", data: updatedProfile });
       return;
     }
@@ -212,6 +216,11 @@ export const updateUserProfile = asyncHandler(async (req: any, res) => {
         new: true,
       }
     );
+
+    if (updatedProfile) {
+      updatedProfile.profile_picture = updatedProfile?.profile_picture ? `${process.env.S3_BUCKET_PREFIX}${updatedProfile.profile_picture}` : null
+    }
+    
     res.status(200).json(updatedProfile);
   } catch (error: any) {
     throw new Error(error);
