@@ -3,11 +3,11 @@ import express from "express";
 import validateToken from "../../middleware/validateTokenHandler";
 
 import {
-  createTeamChallenge,
+  createTeamChallengeV2,
   deleteIndividualTeamChallenge,
   getAllTeamChallenges,
   getIndividualTeamChallenge,
-  updateIndividualTeamChallenge,
+  updateIndividualTeamChallengeV2,
 } from "../../controllers/team/teamChallengeController";
 
 const teamChallengeRouter = express.Router();
@@ -85,7 +85,7 @@ teamChallengeRouter.get("/:id/challenges", getAllTeamChallenges);
  *      500:
  *        description: Server Error
  */
-teamChallengeRouter.post("/:id/challenges", createTeamChallenge);
+teamChallengeRouter.post("/:id/challenges", createTeamChallengeV2);
 
 /**
  * @openapi
@@ -165,7 +165,7 @@ teamChallengeRouter.get(
  */
 teamChallengeRouter.put(
   "/:teamId/challenges/:challengeId",
-  updateIndividualTeamChallenge
+  updateIndividualTeamChallengeV2
 );
 
 /**
@@ -193,4 +193,5 @@ teamChallengeRouter.delete(
   "/:teamId/challenges/:challengeId",
   deleteIndividualTeamChallenge
 );
+
 export default teamChallengeRouter;

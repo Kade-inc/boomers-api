@@ -1,5 +1,6 @@
 import express from "express";
 import {
+  deleteMultipleChallengesByUser,
   getAllChallenges,
   getChallenge,
 } from "../../controllers/challengesController";
@@ -589,6 +590,11 @@ challengeRouter.put(
 challengeRouter.delete(
   "/:id/solutions/:solutionId/rating/:ratingId",
   deleteSolutionRating
+);
+
+challengeRouter.delete(
+  "/",
+  deleteMultipleChallengesByUser
 );
 
 export default challengeRouter;

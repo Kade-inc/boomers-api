@@ -1,4 +1,4 @@
-import mongoose, { Schema, model } from "mongoose";
+import mongoose, { Schema, model, Types } from "mongoose";
 
 /**
  * 
@@ -23,7 +23,7 @@ is_valid
  */
 interface ITeamChallenge {
   owner_id: any;
-  team_id: any;
+  team_id: Types.ObjectId;
   challenge_name: string;
   due_date: Date;
   difficulty: number;
@@ -51,23 +51,18 @@ const teamChallengeSchema = new Schema<ITeamChallenge>(
     },
     challenge_name: {
       type: String,
-      required: true,
     },
     due_date: {
       type: Date,
-      required: true,
     },
     difficulty: {
       type: Number,
-      required: true,
     },
     description: {
       type: String,
-      required: true,
     },
     resources: {
       type: String,
-      required: true,
     },
     rating: {
       type: Number,

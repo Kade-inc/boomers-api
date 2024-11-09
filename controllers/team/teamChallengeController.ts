@@ -414,3 +414,145 @@ export const deleteChallengeComment = asyncHandler(
     }
   }
 );
+
+
+//@desc Post Challenge
+//@route POST /api/teams/challenge
+//access private
+export const createTeamChallengeV2 = asyncHandler(
+  async (req: CustomRequest, res: Response) => {
+    try {
+      const teamExists = await Team.findById({ _id: req.params.id });
+
+      if (!teamExists) {
+        res.status(404);
+        throw new Error("Team does not exist");
+      }
+
+      if (req.user.id !== teamExists.owner_id.toString()) {
+        res.status(403);
+        throw new Error("User does not own the team");
+      }
+
+      const currentChallenges = await TeamChallenge.find({ owner_id: req.user.id, team_id: req.params.id})
+
+      if (currentChallenges.length === 5) {
+        res.status(400)
+        throw new Error("Maximum amount of drafts reached. Please delete some drafts for this team before you proceed.")
+      }
+
+      const challenge = await TeamChallenge.create({
+        owner_id: req.user.id,
+        team_id: req.params.id,
+        valid: true
+      });
+      res.status(201).json({ message: "success", data: challenge });
+    } catch (error: any) {
+      throw new Error(error);
+    }
+  }
+);
+
+//@desc Update Individual Team Challenge
+//@route PUT /api/teams/:id/challenges/:challengeId
+//access private
+export const updateIndividualTeamChallengeV2 = asyncHandler(
+  async (req: CustomRequest, res: Response) => {
+    try {
+      const team = await Team.findById({ _id: req.params.teamId });
+
+      if (!team) {
+        res.status(404).json({ message: "Team not found" });
+        return
+      } 
+      
+      if (req.user.id !== team.owner_id.toString()) {
+        res.status(403).json({ message: "User does not own this team" });
+        return
+      } 
+      
+     
+      const challenge = await TeamChallenge.findById({
+        _id: req.params.challengeId,
+      });
+      if (!challenge) {
+        res.status(404).json({ message: "Challenge not found" });
+        return
+      } 
+
+      // Validation for due_date and difficulty
+      const { due_date, difficulty } = req.body;
+
+      if (due_date && new Date(due_date) <= new Date()) {
+        res.status(400).json({ message: "Due date can't be in the past" });
+        return
+      }
+
+      if (difficulty && (difficulty < 1 || difficulty > 5)) {
+        res.status(400).json({ message: "Difficulty must be between 1 and 5" });
+        return
+      }
+
+      const updatedChallenge = await TeamChallenge.findByIdAndUpdate(
+        req.params.challengeId,
+        req.body,
+        {
+          new: true,
+        }
+      );
+
+      res
+        .status(200)
+        .json({ message: "Update successful", data: updatedChallenge });
+      
+        
+    } catch (error: any) {
+      console.log(error);
+      res.status(500)
+      throw new(error)
+    }
+  }
+);            
+
+
+// @desc Delete Multiple Specific Team Challenges
+// @route DELETE /api/teams/:teamId/challenges
+// @access private
+export const deleteMultipleSpecificTeamChallenges = asyncHandler(
+  async (req: CustomRequest, res: Response) => {
+    try {
+      const team = await Team.findById({ _id: req.params.teamId });
+
+      if (!team) {
+        res.status(404).json({ message: "Team not found" });
+        return
+      }
+
+      if (req.user.id !== team.owner_id.toString()) {
+        res.status(403).json({ message: "User does not own the team" });
+        return
+      }
+
+      // Check if challengeIds are provided in the request body
+      const { challengeIds } = req.body;
+      if (!challengeIds || !Array.isArray(challengeIds) || challengeIds.length === 0) {
+        res.status(400).json({ message: "No challenge IDs provided or invalid format" });
+        return
+      }
+
+      // Delete only the specified challenges associated with the team
+      const result = await TeamChallenge.deleteMany({
+        _id: { $in: challengeIds },
+        team_id: req.params.teamId,
+      });
+
+      res.status(200).json({
+        message: "Specified challenges deleted successfully",
+        deletedCount: result.deletedCount,
+      });
+    } catch (error: any) {
+      console.log(error);
+      res.status(500).json({ message: "Server error", error: error.message });
+    }
+  }
+);
