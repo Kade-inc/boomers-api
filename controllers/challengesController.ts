@@ -37,12 +37,12 @@ export const getAllChallenges = asyncHandler(
             return challenge;
           });
         } else {
-          challenges = await TeamChallenge.find({team_id: { $in: teamIds }})
+          challenges = await TeamChallenge.find({team_id: { $in: teamIds }, valid: true})
          
         }
        
       } else {
-        challenges = await TeamChallenge.find({});
+        challenges = await TeamChallenge.find({ valid: true});
       }
       
       res.status(200).json({ message: "successful", data: challenges });
