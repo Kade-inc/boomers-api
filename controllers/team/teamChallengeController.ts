@@ -99,8 +99,6 @@ export const getAllTeamChallenges = asyncHandler(
 export const getIndividualTeamChallenge = asyncHandler(
   async (req: CustomRequest, res: Response) => {
     try {
-      console.log("RPA: ", req.params.teamId);
-      console.log("CHALLENGE: ", req.params.challengeId);
       const team = await Team.findById({ _id: req.params.teamId });
 
       if (!team) {
@@ -298,7 +296,6 @@ export const updateChallengeComment = asyncHandler(
           _id: req.params.commentId,
         });
 
-        console.log("CHJAL: ", challengeComment);
         if (challengeComment?.user.user_id.toString() !== req.user.id) {
           res.status(403).json({ error: "This is not your comment" });
           return;
@@ -444,7 +441,7 @@ export const createTeamChallengeV2 = asyncHandler(
       const challenge = await TeamChallenge.create({
         owner_id: req.user.id,
         team_id: req.params.id,
-        valid: true
+        valid: false
       });
       res.status(201).json({ message: "success", data: challenge });
     } catch (error: any) {

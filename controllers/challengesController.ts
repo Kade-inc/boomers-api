@@ -14,44 +14,51 @@ export const getAllChallenges = asyncHandler(
       let challenges: any = [];
 
       if (req.query.userId) {
-        const teamMembers = await TeamMember.find({ user_id: req.query.userId })
-        const teamIds:string[] = []
-        teamMembers.map((member:any) => {
-          teamIds.push(member.team_id)
-        })
-        const valid = req.query.valid
+        // Find all teams for the user
+        const teamMembers = await TeamMember.find({ user_id: req.query.userId });
+        const teamIds = teamMembers.map((member: any) => member.team_id);
+
+        // Fetch all teams for the user's team IDs
+        const teams = await Team.find({ _id: { $in: teamIds } });
+        
+        // Create a map of team IDs to team names
+        const teamNamesMap = teams.reduce((acc: Record<string, string>, team) => {
+          acc[team._id.toString()] = team.name;
+          return acc;
+        }, {});
+
+        // Filter challenges based on the `valid` query parameter
+        const valid = req.query.valid;
         if (valid) {
-          challenges = await TeamChallenge.find({team_id: { $in: teamIds }, valid })
+          challenges = await TeamChallenge.find({ team_id: { $in: teamIds }, valid });
           challenges = challenges.map((challenge: any) => {
-            if (!challenge.challenge_name) {
-              return Object.assign({}, challenge.toObject(), { currentStep: 2 });
-            } else if (challenge.challenge_name && !challenge.description) {
-              return Object.assign({}, challenge.toObject(), { currentStep: 3 });
-            } else if (challenge.challenge_name && challenge.description) {
-              return Object.assign({}, challenge.toObject(), { currentStep: 4 });
-            }  else if (challenge.challenge_name && challenge.description && !challenge.resources) {
-              return Object.assign({}, challenge.toObject(), { currentStep: 5 });
-            } else if (challenge.challenge_name && challenge.description && challenge.resources) {
-              return Object.assign({}, challenge.toObject(), { currentStep: 6 });
-            } 
-            return challenge;
+            const currentStep = !challenge.challenge_name ? 2 :
+                                !challenge.description ? 3 :
+                                challenge.resources ? 6 :
+                                4; // Assign `currentStep` based on conditions
+
+            // Add `currentStep` and `team_name` from the team map
+            return Object.assign({}, challenge.toObject(), {
+              currentStep,
+              teamName: teamNamesMap[challenge.team_id.toString()]
+            });
           });
         } else {
-          challenges = await TeamChallenge.find({team_id: { $in: teamIds }, valid: true})
-         
+          challenges = await TeamChallenge.find({ team_id: { $in: teamIds }, valid: true });
         }
-       
       } else {
-        challenges = await TeamChallenge.find({ valid: true});
+        // If no userId, find all valid challenges
+        challenges = await TeamChallenge.find({ valid: true });
       }
-      
+
       res.status(200).json({ message: "successful", data: challenges });
     } catch (error: any) {
-      res.status(400)
-      throw new Error(error)
+      res.status(400);
+      throw new Error(error.message);
     }
   }
 );
+
 
 //@desc Get Challenges
 //@route GET /api/challenges/:id
