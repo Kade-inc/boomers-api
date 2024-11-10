@@ -431,9 +431,9 @@ export const createTeamChallengeV2 = asyncHandler(
         throw new Error("User does not own the team");
       }
 
-      const currentChallenges = await TeamChallenge.find({ owner_id: req.user.id, team_id: req.params.id})
+      const currentChallenges = await TeamChallenge.find({ owner_id: req.user.id})
 
-      if (currentChallenges.length === 5) {
+      if (currentChallenges.length > 4) {
         res.status(400)
         throw new Error("Maximum amount of drafts reached. Please delete some drafts for this team before you proceed.")
       }
