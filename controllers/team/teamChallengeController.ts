@@ -485,7 +485,7 @@ export const updateIndividualTeamChallengeV2 = asyncHandler(
         return
       }
 
-      if (difficulty && (difficulty < 1 || difficulty > 5)) {
+      if (difficulty !== undefined && (difficulty < 1 || difficulty > 5)) {
         res.status(400).json({ message: "Difficulty must be between 1 and 5" });
         return
       }

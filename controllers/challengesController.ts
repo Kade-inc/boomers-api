@@ -32,16 +32,35 @@ export const getAllChallenges = asyncHandler(
         if (valid) {
           challenges = await TeamChallenge.find({ team_id: { $in: teamIds }, valid });
           challenges = challenges.map((challenge: any) => {
-            const currentStep = !challenge.challenge_name ? 2 :
-                                !challenge.description ? 3 :
-                                challenge.resources ? 6 :
-                                4; // Assign `currentStep` based on conditions
-
-            // Add `currentStep` and `team_name` from the team map
-            return Object.assign({}, challenge.toObject(), {
+            const hasTeamId = !!challenge.team_id;
+            const hasChallengeName = !!challenge.challenge_name;
+            const hasDifficulty = !!challenge.difficulty;
+            const hasDueDate = !!challenge.due_date;
+            const hasDescription = !!challenge.description;
+            const hasResources = !!challenge.resources;
+          
+            let currentStep;
+          
+            if (hasTeamId && (!hasChallengeName || !hasDifficulty || !hasDueDate)) {
+              currentStep = 2;
+            } else if (hasTeamId && hasChallengeName && hasDifficulty && hasDueDate && !hasDescription) {
+              currentStep = 3;
+            } else if (hasDescription && !hasResources) {
+              currentStep = 4;
+            } else if (hasResources && (!hasChallengeName || !hasDifficulty || !hasDueDate)) {
+              currentStep = 5;
+            } else if (hasTeamId && hasChallengeName && hasDifficulty && hasDueDate && hasDescription && hasResources) {
+              currentStep = 6;
+            }
+            // return Object.assign({}, challenge.toObject(), {
+            //   currentStep,
+            //   teamName: teamNamesMap[challenge.team_id.toString()]
+            // });
+            return {
+              ...challenge.toObject(),
               currentStep,
               teamName: teamNamesMap[challenge.team_id.toString()]
-            });
+            };
           });
         } else {
           challenges = await TeamChallenge.find({ team_id: { $in: teamIds }, valid: true });
