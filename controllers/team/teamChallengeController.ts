@@ -435,7 +435,7 @@ export const createTeamChallengeV2 = asyncHandler(
 
       if (currentChallenges.length > 4) {
         res.status(400)
-        throw new Error("Maximum amount of drafts reached. Please delete some drafts for this team before you proceed.")
+        throw new Error("Maximum amount of drafts reached. Please delete some of your draft challenges before you proceed.")
       }
 
       const challenge = await TeamChallenge.create({
