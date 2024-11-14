@@ -295,7 +295,7 @@ export const leaveTeam = asyncHandler(
         return
       }
 
-      if (teamMember.owner_id.toString() === req.query.userId) {
+      if (teamMember.owner_id.toString() === req.user.id) {
         res.status(400).json({message: "You cannot leave your own team!"});
         return
       }
