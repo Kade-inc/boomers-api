@@ -196,7 +196,7 @@ export const updateUserProfile = asyncHandler(async (req: any, res) => {
         updatedProfile.profile_picture = updatedProfile?.profile_picture ? `${process.env.S3_BUCKET_PREFIX}${updatedProfile.profile_picture}` : null
       }
       
-      res.status(200).json({ message: "Profile updated!", data: updatedProfile });
+      res.status(200).json(updatedProfile);
       return;
     }
 
