@@ -6,6 +6,18 @@ import TeamChallenge from "../../models/teamChallengeModel";
 import TeamMember from "../../models/teamMemberModel";
 import UserProfile from "../../models/userProfileModel";
 import ChallengeComment from "../../models/challengeCommentModel";
+import crypto from "crypto";
+
+interface MulterRequest extends Request {
+  file: Express.Multer.File;
+}
+
+
+import {
+  PutObjectCommand,
+  S3Client,
+  GetObjectCommand,
+} from "@aws-sdk/client-s3";
 
 //@desc Post Challenge
 //@route POST /api/teams/challenge
@@ -553,3 +565,40 @@ export const deleteMultipleSpecificTeamChallenges = asyncHandler(
     }
   }
 );
+
+
+export const uploadImage = asyncHandler(async (req: Request, res: Response) => {
+  const multerReq = req as MulterRequest;
+  const randomImageName = (bytes = 32) =>
+    crypto.randomBytes(bytes).toString("hex");
+  const bucketName = process.env.BUCKET_NAME;
+  const bucketRegion = process.env.BUCKET_REGION;
+  const accessKey = process.env.ACCESS_KEY;
+  const secretAccessKey = process.env.SECRET_ACCESS_KEY;
+
+  const s3 = new S3Client({
+    credentials: {
+      accessKeyId: accessKey!,
+      secretAccessKey: secretAccessKey!,
+    },
+    region: bucketRegion!,
+  });
+
+  try {
+    const imageKey = randomImageName();
+    const params = {
+      Bucket: bucketName,
+      Key: imageKey,
+      Body: multerReq.file.buffer,
+      ContentType: multerReq.file.mimetype,
+    };
+
+    const command = new PutObjectCommand(params);
+    await s3.send(command);
+
+    const imageUrl = `${process.env.S3_BUCKET_PREFIX}${imageKey}`;
+    res.status(200).json({ url: imageUrl });
+  } catch (error: any) {
+    res.status(500).json({ message: "Image upload failed", error: error.message });
+  }
+});

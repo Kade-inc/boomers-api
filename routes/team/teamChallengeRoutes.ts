@@ -8,7 +8,14 @@ import {
   getAllTeamChallenges,
   getIndividualTeamChallenge,
   updateIndividualTeamChallengeV2,
+  uploadImage,
 } from "../../controllers/team/teamChallengeController";
+
+import multer from "multer";
+
+// This will enable just storing the image in memory
+const storage = multer.memoryStorage();
+const upload = multer({ storage: storage });
 
 const teamChallengeRouter = express.Router();
 
@@ -192,6 +199,12 @@ teamChallengeRouter.put(
 teamChallengeRouter.delete(
   "/:teamId/challenges/:challengeId",
   deleteIndividualTeamChallenge
+);
+
+teamChallengeRouter.post(
+  "/upload-image",
+  upload.single("file"),
+  uploadImage
 );
 
 export default teamChallengeRouter;
