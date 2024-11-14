@@ -5,6 +5,7 @@ import {
   deleteTeamMember,
   fetchTeamMemberRequests,
   joinTeam,
+  leaveTeam,
   updateJoinRequest,
 } from "../../controllers/team/teamMemberController";
 
@@ -122,5 +123,7 @@ teamMemberRouter.patch("/join/:id", updateJoinRequest);
 teamMemberRouter.get("/requests/:teamId", fetchTeamMemberRequests)
 
 teamMemberRouter.delete("/", deleteTeamMember)
+
+teamMemberRouter.delete("/leave/:teamId", leaveTeam)
 
 export default teamMemberRouter;

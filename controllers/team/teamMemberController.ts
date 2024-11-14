@@ -278,6 +278,39 @@ export const deleteTeamMember = asyncHandler(
   }
 );
 
+//@desc Leave team
+//@route DELETE /api/team-member/leave/:id
+//access private
+export const leaveTeam = asyncHandler(
+  async (req: CustomRequest, res: Response) => {
+    try {
+  
+      const teamMember = await TeamMember.findOne({
+        user_id: req.user.id,
+        team_id: req.params.teamId
+      });
+
+      if (!teamMember) {
+        res.status(400).json({message: "You do not belong to this team!"});
+        return
+      }
+
+      if (teamMember.owner_id.toString() === req.query.userId) {
+        res.status(400).json({message: "You cannot leave your own team!"});
+        return
+      }
+
+      await TeamMember.findByIdAndDelete(teamMember?._id)
+      res.status(204).json({
+        message: "You left the team successfully"
+      })
+    } catch (error:any) {
+      res.status(400)
+      throw new Error(error);
+    }
+  }
+);
+
 //@desc Fetch team member requests of a team
 //@route GET /api/team-member/requests/:id
 //access private
