@@ -4,6 +4,7 @@ import validateToken from "../../middleware/validateTokenHandler";
 
 import {
   createTeamChallengeV2,
+  deleteImage,
   deleteIndividualTeamChallenge,
   getAllTeamChallenges,
   getIndividualTeamChallenge,
@@ -206,5 +207,12 @@ teamChallengeRouter.post(
   upload.single("file"),
   uploadImage
 );
+
+
+teamChallengeRouter.post(
+  "/delete-image",
+ deleteImage
+);
+
 
 export default teamChallengeRouter;

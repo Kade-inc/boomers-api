@@ -17,7 +17,21 @@ import {
   PutObjectCommand,
   S3Client,
   GetObjectCommand,
+  DeleteObjectCommand,
 } from "@aws-sdk/client-s3";
+
+const bucketName = process.env.BUCKET_NAME;
+const bucketRegion = process.env.BUCKET_REGION;
+const accessKey = process.env.ACCESS_KEY;
+const secretAccessKey = process.env.SECRET_ACCESS_KEY;
+
+const s3 = new S3Client({
+  credentials: {
+    accessKeyId: accessKey!,
+    secretAccessKey: secretAccessKey!,
+  },
+  region: bucketRegion!,
+});
 
 //@desc Post Challenge
 //@route POST /api/teams/challenge
@@ -571,18 +585,9 @@ export const uploadImage = asyncHandler(async (req: Request, res: Response) => {
   const multerReq = req as MulterRequest;
   const randomImageName = (bytes = 32) =>
     crypto.randomBytes(bytes).toString("hex");
-  const bucketName = process.env.BUCKET_NAME;
-  const bucketRegion = process.env.BUCKET_REGION;
-  const accessKey = process.env.ACCESS_KEY;
-  const secretAccessKey = process.env.SECRET_ACCESS_KEY;
 
-  const s3 = new S3Client({
-    credentials: {
-      accessKeyId: accessKey!,
-      secretAccessKey: secretAccessKey!,
-    },
-    region: bucketRegion!,
-  });
+
+
 
   try {
     const imageKey = randomImageName();
@@ -600,5 +605,28 @@ export const uploadImage = asyncHandler(async (req: Request, res: Response) => {
     res.status(200).json({ url: imageUrl });
   } catch (error: any) {
     res.status(500).json({ message: "Image upload failed", error: error.message });
+  }
+});
+
+
+// Route to delete an image
+export const deleteImage = asyncHandler(async (req: Request, res: Response) => {
+  const { key } = req.body; // The key of the image to delete
+
+  if (!key) {
+    res.status(400);
+    throw new Error("No image key provided");
+  }
+
+  const params = {
+    Bucket: bucketName,
+    Key: key,
+  };
+
+  try {
+    await s3.send(new DeleteObjectCommand(params));
+    res.status(200).json({ message: "Image deleted successfully" });
+  } catch (error: any) {
+    res.status(500).json({ message: "Image deletion failed", error: error.message });
   }
 });
