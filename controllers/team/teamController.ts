@@ -210,7 +210,7 @@ export const getTeam = asyncHandler(async (req: Request, res: Response) => {
           username: user.username,
           email: user.email,
           profile: user.profile,
-          profile_picture: null
+          profile_picture: null,
         }
       } else {
         return null
@@ -224,6 +224,7 @@ export const getTeam = asyncHandler(async (req: Request, res: Response) => {
         member.profile_picture = userProfile.profile_picture ? `${process.env.S3_BUCKET_PREFIX}${userProfile.profile_picture}` : null
         member.firstName = userProfile.firstName,
         member.lastName = userProfile.lastName
+        member.interests = userProfile.interests
       }
     })
 
