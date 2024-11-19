@@ -32,7 +32,7 @@ interface ITeamChallenge {
   rating: number;
   comments: any;
   best_answer: any;
-  completion: string;
+  completion: number;
   reward: string;
   image_url: string;
   valid: boolean;
@@ -79,7 +79,7 @@ const teamChallengeSchema = new Schema<ITeamChallenge>(
       },
     },
     completion: {
-      type: String,
+      type: Number,
     },
     reward: {
       reward_type: {
