@@ -88,12 +88,15 @@ export const getChallenge = asyncHandler(
       const challenge = await TeamChallenge.findById({ _id: req.params.id });
 
       if (!challenge) {
-        res.status(404).json({ message: "Challenge not found" });
+        res.status(404)
+        throw new Error("Challenge not found")
+        // res.status(404).json({ message: "Challenge not found" });
       } else {
         res.status(200).json({ message: "successful", data: challenge });
       }
     } catch (error: any) {
-      console.log(error);
+      res.status(400)
+      throw new Error(error)
     }
   }
 );
