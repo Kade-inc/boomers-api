@@ -8,7 +8,7 @@ interface IUserProfile {
   lastName: string;
   bio: string;
   interests: any;
-  user_id: any;
+  user_id: Schema.Types.ObjectId;
   username: string;
   gender: string;
   profile_picture: string | null;

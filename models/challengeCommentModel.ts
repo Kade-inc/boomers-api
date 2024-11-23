@@ -3,7 +3,7 @@ import { Schema, model } from "mongoose";
 interface IChallengeComment {
   challenge_id: Schema.Types.ObjectId;
   comment: string;
-  user: any;
+  user: Schema.Types.ObjectId;
 }
 
 const challengeCommentSchema = new Schema<IChallengeComment>(
@@ -18,7 +18,9 @@ const challengeCommentSchema = new Schema<IChallengeComment>(
       required: true,
     },
     user: {
-      type: {},
+      type: Schema.Types.ObjectId,
+      required: true,
+      ref: "User", // Correctly reference the `User` model
     },
   },
   {

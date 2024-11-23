@@ -29,11 +29,13 @@ const userSchema = new Schema<IUser>(
     },
     profile: {
       type: Schema.Types.ObjectId,
+      ref: "UserProfile", // Correctly reference the `UserProfile` model
       default: null,
     },
     username: {
       type: String,
       required: true,
+      unique: true,
     },
   },
   {

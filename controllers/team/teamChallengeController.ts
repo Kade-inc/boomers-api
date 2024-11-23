@@ -262,12 +262,10 @@ export const postChallengeComment = asyncHandler(
           return;
         }
 
-        const user = await UserProfile.findOne({ user_id: req.user.id });
-
         const challengeComment = await ChallengeComment.create({
           challenge_id: req.params.id,
           comment,
-          user: user,
+          user: req.user.id,
         });
 
         res.status(201).json({ message: "successful", data: challengeComment });
@@ -322,7 +320,7 @@ export const updateChallengeComment = asyncHandler(
           _id: req.params.commentId,
         });
 
-        if (challengeComment?.user.user_id.toString() !== req.user.id) {
+        if (challengeComment?.user.toString() !== req.user.id) {
           res.status(403).json({ error: "This is not your comment" });
           return;
         }
@@ -351,24 +349,47 @@ export const getChallengeComments = asyncHandler(
   async (req: CustomRequest, res: Response) => {
     try {
       const challenge_id = req.params.id;
-      const challengeExists = await TeamChallenge.findOne({
-        _id: challenge_id,
-      });
 
+      // Check if the challenge exists
+      const challengeExists = await TeamChallenge.findOne({ _id: challenge_id });
       if (!challengeExists) {
         res.status(404).json({ message: "Challenge does not exist" });
         return;
       }
 
-      const challengeComments = await ChallengeComment.find({});
+      // Fetch challenge comments with nested population
+      const challengeComments = await ChallengeComment.find({ challenge_id })
+        .populate({
+          path: "user", // Populate the `user` field in ChallengeComment
+          model: "User", // Explicitly reference the `User` model
+          select: "username email profile", // Include relevant fields from User
+          populate: {
+            path: "profile", // Populate the `profile` field within User
+            model: "UserProfile", // Reference the UserProfile model
+            select: "firstName lastName bio profile_picture", // Include relevant fields from UserProfile
+          },
+        });
 
-      res.status(200).json({ message: "successful", data: challengeComments });
+      // Add S3 prefix to profile_picture
+      const data = challengeComments.map((comment:any) => {
+        const userProfile = comment.user?.profile;
+        if (userProfile?.profile_picture) {
+          userProfile.profile_picture = `${process.env.S3_BUCKET_PREFIX}${userProfile.profile_picture}`;
+        } else {
+          comment.user.profile = null; // Handle missing profiles
+        }
+        return comment;
+      });
+
+      res.status(200).json({ message: "successful", data });
     } catch (error: any) {
-      console.log(error);
+      console.error(error);
       res.status(400).json({ error: error.message });
     }
   }
 );
+
+
 
 //@desc Get Challenge comment
 //@route GET /api/challenges/:id/comments/:commentId
@@ -423,7 +444,7 @@ export const deleteChallengeComment = asyncHandler(
         return;
       }
 
-      if (challengeComment.user.user_id.toString() !== req.user.id) {
+      if (challengeComment.user.toString() !== req.user.id) {
         res.status(403).json({ error: "This is not your comment" });
         return;
       }
