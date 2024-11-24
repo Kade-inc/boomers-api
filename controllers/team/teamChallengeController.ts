@@ -349,6 +349,7 @@ export const getChallengeComments = asyncHandler(
   async (req: CustomRequest, res: Response) => {
     try {
       const challenge_id = req.params.id;
+      const { sort = "desc" } = req.query; // Get sort query parameter (default: "desc")
 
       // Check if the challenge exists
       const challengeExists = await TeamChallenge.findOne({ _id: challenge_id });
@@ -357,8 +358,12 @@ export const getChallengeComments = asyncHandler(
         return;
       }
 
+      // Determine sort order
+      const sortOrder = sort === "asc" ? 1 : -1; // -1 for newest first, 1 for oldest first
+
       // Fetch challenge comments with nested population
       const challengeComments = await ChallengeComment.find({ challenge_id })
+        .sort({ createdAt: sortOrder }) 
         .populate({
           path: "user", // Populate the `user` field in ChallengeComment
           model: "User", // Explicitly reference the `User` model
@@ -371,15 +376,20 @@ export const getChallengeComments = asyncHandler(
         });
 
       // Add S3 prefix to profile_picture
-      const data = challengeComments.map((comment:any) => {
+      const data = challengeComments.map((comment: any) => {
         const userProfile = comment.user?.profile;
+      
         if (userProfile?.profile_picture) {
-          userProfile.profile_picture = `${process.env.S3_BUCKET_PREFIX}${userProfile.profile_picture}`;
+          // Only add the S3 prefix if it is not already included
+          if (!userProfile.profile_picture.startsWith(process.env.S3_BUCKET_PREFIX)) {
+            userProfile.profile_picture = `${process.env.S3_BUCKET_PREFIX}${userProfile.profile_picture}`;
+          }
         } else {
           comment.user.profile = null; // Handle missing profiles
         }
+      
         return comment;
-      });
+      });      
 
       res.status(200).json({ message: "successful", data });
     } catch (error: any) {
