@@ -118,7 +118,7 @@ teamMemberRouter.post("/join", joinTeam);
  *      500:
  *        description: Server Error
  */
-teamMemberRouter.patch("/join/:id", updateJoinRequest);
+teamMemberRouter.put("/join/:id", updateJoinRequest);
 
 teamMemberRouter.get("/requests/:teamId", fetchTeamMemberRequests)
 
