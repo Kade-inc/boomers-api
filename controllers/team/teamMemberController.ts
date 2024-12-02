@@ -105,6 +105,15 @@ export const joinTeam = asyncHandler(
         throw new Error("Team does not exist");
       }
 
+      const memberRequest = await TeamMemberRequest.find({
+        user_id: req.user.id,
+      });
+
+      if (memberRequest) {
+        res.status(409);
+        throw new Error("Member request already exists for that user.");
+      }
+
       if (req.user.id === teamExists.owner_id.toString()) {
         res.status(400);
         throw new Error("You cannot add yourself to the team");
