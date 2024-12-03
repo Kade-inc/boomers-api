@@ -105,7 +105,7 @@ export const joinTeam = asyncHandler(
         throw new Error("Team does not exist");
       }
 
-      const memberRequest = await TeamMemberRequest.find({
+      const memberRequest = await TeamMemberRequest.findOne({
         user_id: req.user.id,
         team_id: team_id
       });
