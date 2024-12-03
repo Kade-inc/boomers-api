@@ -107,6 +107,7 @@ export const joinTeam = asyncHandler(
 
       const memberRequest = await TeamMemberRequest.find({
         user_id: req.user.id,
+        team_id: team_id
       });
 
       if (memberRequest) {
