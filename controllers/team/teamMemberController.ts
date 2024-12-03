@@ -155,8 +155,8 @@ export const joinTeam = asyncHandler(
       });
 
       const emailTemplate = `<div>
-        <p>Hi,</p>
-        <p>You have a request from ${userExists.email}. Kindly log in to the application to review their request.</p>
+        <p>Hi ${owner?.username},</p>
+        <p>You have a request from <strong>${userExists?.username}</strong> to join your team. Kindly log in to the application to review their request.</p>
         <p>Best,</p>
         <p>Boomers Support</p>
       </div>`;
@@ -229,6 +229,9 @@ export const updateJoinRequest = asyncHandler(
         team_id: memberRequest.team_id,
         user_id: memberRequest.user_id,
       });
+
+      const teamName = await Team.findById({ _id: memberRequest.team_id})
+
       const userExists = await User.findOne({
         _id: { $in: [memberRequest.user_id] },
       });
@@ -245,7 +248,7 @@ export const updateJoinRequest = asyncHandler(
 
       const emailTemplate = `<div>
           <p>Hi,</p>
-          <p>Your request to join team ${memberRequest.team_id} has been ${status}.</p>
+          <p>Your request to join team ${teamName?.name} has been ${status}.</p>
           <p>Best,</p>
           <p>Boomers Support</p>
         </div>`;
