@@ -110,10 +110,11 @@ export const joinTeam = asyncHandler(
         team_id: team_id
       });
 
-      if (memberRequest) {
+      if (memberRequest && memberRequest.status === 'PENDING') {
         res.status(409);
         throw new Error("Member request already exists for that user.");
       }
+
 
       if (req.user.id === teamExists.owner_id.toString()) {
         res.status(400);
