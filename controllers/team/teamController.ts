@@ -151,8 +151,13 @@ export const createTeam = asyncHandler(
 export const getAllTeams = asyncHandler(async (req: Request, res: Response) => {
   try {
     let teams: any = [];
-    let { name } = req.query;
+    const { name, page, limit } = req.query;
 
+    // Convert page and limit to numbers, or default to page 1 and limit 10
+    const pageNum = parseInt(page as string) || 1;
+    const limitNum = parseInt(limit as string) || 20;
+    const skip = (pageNum - 1) * limitNum;
+    let totalCount: number = 0;
     if (req.query.userId) {
       const teamMembers = await TeamMember.find({ user_id: req.query.userId })
 
@@ -160,14 +165,21 @@ export const getAllTeams = asyncHandler(async (req: Request, res: Response) => {
       teamMembers.map((member:any) => {
         teamIds.push(member.team_id)
       })
-      teams = await Team.find({_id: { $in: teamIds }})
+      teams = await Team.find({_id: { $in: teamIds }}).skip(skip)
+                      .limit(limitNum);
+      totalCount = await Team.countDocuments({ _id: { $in: teamIds } });
     } else if (req.query.name) {
-      teams = await Team.find({ name: { $regex: ".*" + name + ".*" } });
+      teams = await Team.find({ name: { $regex: ".*" + name + ".*" } }).skip(skip)
+      .limit(limitNum);
+      totalCount = await Team.countDocuments({ name: { $regex: ".*" + name + ".*", $options: "i" } });
     } else {
-      teams = await Team.find();
+      teams = await Team.find().skip(skip).limit(limitNum);
+      totalCount = await Team.countDocuments({});
     }
 
-    res.status(200).json({ message: "successful", data: teams });
+    const totalPages = Math.ceil(totalCount / limitNum);
+    res.status(200).json({ message: "successful", currentPage: pageNum,
+      perPage: limitNum, totalPages, totalCount, data: teams });
   } catch (error: any) {
     throw new Error(error);
   }
