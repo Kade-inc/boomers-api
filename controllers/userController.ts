@@ -345,41 +345,58 @@ export const getUser = asyncHandler(async (req: Request, res: Response) => {
 //access public
 export const getUsers = asyncHandler(async (req: Request, res: Response) => {
   try {
-    const { username } = req.query;
+    const { search } = req.query;
+    const bucketPrefix = process.env.S3_BUCKET_PREFIX || "";
     let users;
 
-    if (username) {
+    if (search) {
+      const regex = new RegExp(search.toString(), "i");
+
+      // 1. Find matching user profiles
+      const matchingProfiles = await UserProfile.find({
+        $or: [
+          { firstName: { $regex: regex } },
+          { lastName: { $regex: regex } },
+        ],
+      }).select("_id user_id"); // user_id references the User
+
+      const profileUserIds = matchingProfiles.map(profile => profile.user_id);
+
+      // 2. Find users whose username matches or whose _id is in profileUserIds
       users = await User.find({
-        username: { $regex: username, $options: "i" },
+        $or: [
+          { username: { $regex: regex } },
+          { _id: { $in: profileUserIds } },
+        ],
       })
         .populate("profile", "firstName lastName profile_picture")
-        .lean(); // Plain objects
+        .lean();
     } else {
+      // No search term: just return all users.
       users = await User.find({})
         .populate("profile", "firstName lastName profile_picture")
         .lean();
     }
 
-    const bucketPrefix = process.env.S3_BUCKET_PREFIX || '';
-
-    const modifiedUsers = users.map(userObj => {
-      const profile = userObj.profile as { 
-        firstName?: string; 
-        lastName?: string; 
-        profile_picture?: string | null; 
-      } | null;
-
+    // Post-process to add S3 prefix if necessary.
+    users = users.map(user => {
+      const profile = user.profile as {
+        firstName?: string;
+        lastName?: string;
+        profile_picture?: string | null;
+      }
       if (profile && profile.profile_picture) {
         profile.profile_picture = `${bucketPrefix}${profile.profile_picture}`;
       }
-      return userObj;
+      return user;
     });
 
-    res.json(modifiedUsers);
+    res.json(users);
   } catch (error: any) {
     res.status(500).json({ message: "Error searching for users", error: error.message });
   }
 });
+
 
 
 //@desc Get current user info
