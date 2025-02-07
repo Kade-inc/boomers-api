@@ -347,19 +347,22 @@ export const getUsers = asyncHandler(async (req: Request, res: Response) => {
   try {
     const { username } = req.query;
     let users;
+
     if (username) {
-      // users = await User.find({ username: { $regex: ".*" + username + ".*" } });
       users = await User.find({
         username: { $regex: username, $options: "i" },
-      }).populate("profile", "firstName lastName profile_picture"); // Populate firstName and lastName from UserProfile
+      })
+        .populate("profile", "firstName lastName profile_picture")
+        .lean(); // Plain objects
     } else {
-      users = await User.find({}).populate("profile", "firstName lastName profile_picture");
+      users = await User.find({})
+        .populate("profile", "firstName lastName profile_picture")
+        .lean();
     }
 
-    // Convert each mongoose document to a plain object and modify profile_picture if present
-    const modifiedUsers = users.map(user => {
-      // Convert to plain object (if not using .lean())
-      const userObj = user.toObject();
+    const bucketPrefix = process.env.S3_BUCKET_PREFIX || '';
+
+    const modifiedUsers = users.map(userObj => {
       const profile = userObj.profile as { 
         firstName?: string; 
         lastName?: string; 
@@ -367,17 +370,17 @@ export const getUsers = asyncHandler(async (req: Request, res: Response) => {
       } | null;
 
       if (profile && profile.profile_picture) {
-        profile.profile_picture = `${process.env.S3_BUCKET_PREFIX}${profile.profile_picture}`;
+        profile.profile_picture = `${bucketPrefix}${profile.profile_picture}`;
       }
       return userObj;
     });
+
     res.json(modifiedUsers);
   } catch (error: any) {
-    res
-      .status(500)
-      .json({ message: "Error searching for users", error: error.message });
+    res.status(500).json({ message: "Error searching for users", error: error.message });
   }
 });
+
 
 //@desc Get current user info
 //@route GET /api/users
