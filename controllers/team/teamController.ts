@@ -16,6 +16,7 @@ import TeamSubDomain from "../../models/teamSubdomainModel";
 import DomainTopic from "../../models/domainTopicModel";
 import UserProfile from "../../models/userProfileModel";
 import User from "../../models/userModel";
+import redisClient from "../../config/redisClient";
 
 const randomImageName = (bytes = 32) =>
   crypto.randomBytes(bytes).toString("hex");
@@ -31,6 +32,10 @@ const s3 = new S3Client({
   },
   region: bucketRegion,
 });
+
+// Define cache key and TTL (24 hours in seconds)
+const CACHE_KEY = "dailyRandomTeam";
+const TTL_SECONDS = 86400; // 24 hours
 
 //@desc Create team
 //@route POST /api/teams
@@ -571,6 +576,42 @@ export const getTeamRecommendations = asyncHandler(
       } 
 
       res.status(200).json({ data: teams });
+    } catch (error: any) {
+      res.status(400).json({ error: error });
+    }
+  }
+);
+
+
+//@desc Get Random Team
+//@route GET /api/teams/spotlight
+//access private
+export const getRandomTeam = asyncHandler(
+  async (req: CustomRequest, res: Response) => {
+    try {
+      // Try to fetch the daily random team from Redis
+    const cachedTeam = await redisClient.get(CACHE_KEY);
+    if (cachedTeam) {
+      // If found, parse it and return
+      res.status(200).json(JSON.parse(cachedTeam))
+      return
+    }
+
+    // If not found in cache, get a random team from MongoDB
+    const randomTeam = await Team.aggregate([{ $sample: { size: 1 } }]);
+    if (!randomTeam || randomTeam.length === 0) {
+      res.status(404).json({ message: "No team found" });
+      return
+    }
+
+    const teamToCache = randomTeam[0];
+    
+    // Cache the selected team with a TTL of 24 hours
+    await redisClient.set(CACHE_KEY, JSON.stringify(teamToCache), { EX: TTL_SECONDS });
+
+    // Return the newly selected team
+    res.status(200).json(teamToCache);
+
     } catch (error: any) {
       res.status(400).json({ error: error });
     }

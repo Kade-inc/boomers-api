@@ -6,6 +6,7 @@ import {
   createTeam,
   deleteTeam,
   getAllTeams,
+  getRandomTeam,
   getTeam,
   getTeamRecommendations,
   updateTeam,
@@ -196,6 +197,25 @@ teamRouter.get("/recommendations", getTeamRecommendations);
 
 /**
  * @openapi
+ * '/api/teams/spotlight':
+ *  get:
+ *     tags:
+ *     - Team Controller
+ *     summary: Get a random team
+ *     responses:
+ *      200:
+ *        description: Ok
+ *      400:
+ *        description: Bad Request
+ *      404:
+ *        description: Not Found
+ *      500:
+ *        description: Server Error
+ */
+teamRouter.get("/spotlight", getRandomTeam);
+
+/**
+ * @openapi
  * '/api/teams/:id':
  *  get:
  *     tags:
@@ -347,5 +367,7 @@ teamRouter.post("/domains/:id/subdomain", addSubDomain);
  *        description: Server Error
  */
 teamRouter.post("/domains/topics", addDomainTopic);
+
+
 
 export default teamRouter;
