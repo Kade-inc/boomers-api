@@ -1,5 +1,6 @@
 import express from "express";
 import {
+  deleteProfilePicture,
   getProfile,
   updateUserProfile,
 } from "../controllers/userProfileController";
@@ -61,5 +62,30 @@ userProfileRouter.put(
   upload.single("image"),
   updateUserProfile
 );
+
+/**
+ * @openapi
+ * '/api/users/:id/profile-picture':
+ *  delete:
+ *     tags:
+ *     - User Profile Controller
+ *     summary: Deletes a user's profile picture
+ *     responses:
+ *      204:
+ *        description: Deleted
+ *      400:
+ *        description: Bad Request
+ *      403:
+ *        description: Forbidden
+ *      404:
+ *        description: Not Found
+ *      500:
+ *        description: Server Error
+ */
+userProfileRouter.delete(
+  "/:id/profile-picture",
+  deleteProfilePicture
+);
+
 
 export default userProfileRouter;

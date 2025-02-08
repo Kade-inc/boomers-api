@@ -5,6 +5,7 @@ import {
   PutObjectCommand,
   S3Client,
   GetObjectCommand,
+  DeleteObjectCommand
 } from "@aws-sdk/client-s3";
 import crypto from "crypto";
 import sharp from "sharp";
@@ -66,6 +67,10 @@ export const updateUserProfile = asyncHandler(async (req: any, res) => {
       throw new Error("User profile not found");
     }
 
+    if (profile.user_id.toString() !== req.user.id) {
+      res.status(403).json({ error: "You do not own this profile!" });
+      return;
+    }
     const { phoneNumber, firstName, lastName, bio, interests, gender, job, location } =
       req.body;
     let updateProfileBody = {
@@ -226,3 +231,45 @@ export const updateUserProfile = asyncHandler(async (req: any, res) => {
     throw new Error(error);
   }
 });
+
+
+//@desc Delete profile picture
+//@route DELETE /api/users/:id/profile-picture
+//access private
+export const deleteProfilePicture = asyncHandler(async (req:any, res) => {
+
+  try {
+    const userId = req.params.id
+    const profile = await UserProfile.findOne({ user_id: userId });
+    if (!profile) {
+      res.status(404).json({ error: 'Profile not found.' });
+      return
+    }
+
+    if (profile.user_id.toString() !== req.user.id) {
+      res.status(403).json({ error: "You do not own this profile!" });
+      return;
+    }
+
+    const imageKey = profile.profile_picture;
+    if (!imageKey) {
+      res.status(404).json({ error: 'Profile picture not found.' });
+      return
+    }
+    
+    const deleteParams = {
+      Bucket: bucketName,
+      Key: imageKey,
+    };
+
+    const deleteCommand = new DeleteObjectCommand(deleteParams);
+    await s3.send(deleteCommand);
+    await UserProfile.findByIdAndUpdate(profile._id, { profile_picture: null });
+    res.status(204).json({ message: "Profile picture deleted" });
+  
+  }
+   catch (error:any) {
+    res.status(500)
+    throw new Error(error)
+  }
+})
