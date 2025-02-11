@@ -151,39 +151,91 @@ export const createTeam = asyncHandler(
 export const getAllTeams = asyncHandler(async (req: Request, res: Response) => {
   try {
     let teams: any = [];
-    const { name, page, limit } = req.query;
+    const { name, domain, subdomain, subdomainTopics, page, limit, userId } = req.query;
 
-    // Convert page and limit to numbers, or default to page 1 and limit 10
+    // Convert page and limit to numbers, or use defaults
     const pageNum = parseInt(page as string) || 1;
     const limitNum = parseInt(limit as string) || 20;
     const skip = (pageNum - 1) * limitNum;
     let totalCount: number = 0;
-    if (req.query.userId) {
-      const teamMembers = await TeamMember.find({ user_id: req.query.userId })
 
-      const teamIds:string[] = []
-      teamMembers.map((member:any) => {
-        teamIds.push(member.team_id)
-      })
-      teams = await Team.find({_id: { $in: teamIds }}).skip(skip)
-                      .limit(limitNum);
-      totalCount = await Team.countDocuments({ _id: { $in: teamIds } });
-    } else if (req.query.name) {
-      teams = await Team.find({ name: { $regex: ".*" + name + ".*" } }).skip(skip)
-      .limit(limitNum);
-      totalCount = await Team.countDocuments({ name: { $regex: ".*" + name + ".*", $options: "i" } });
+    // Build a topics filter that supports multiple topics
+    let topicsFilter: RegExp[] | undefined;
+    if (subdomainTopics) {
+      if (Array.isArray(subdomainTopics)) {
+        // Cast each element to string before creating the RegExp
+        topicsFilter = (subdomainTopics as string[]).map((topic: string) => new RegExp(topic, 'i'));
+      } else if (typeof subdomainTopics === 'string') {
+        // If it's a comma-separated string, split it; otherwise, treat it as a single topic
+        topicsFilter = subdomainTopics.includes(',')
+          ? subdomainTopics.split(',').map((topic: string) => new RegExp(topic.trim(), 'i'))
+          : [new RegExp(subdomainTopics, 'i')];
+      }
+    }
+
+    // When filtering by userId, first get the teams that the user belongs to
+    if (userId) {
+      // Find team memberships for the given user
+      const teamMembers = await TeamMember.find({ user_id: userId });
+      const teamIds = teamMembers.map((member: any) => member.team_id);
+
+      // Build query for teams that the user is a member of
+      const query: any = { _id: { $in: teamIds } };
+      if (domain) {
+        query.domain = { $regex: new RegExp(domain as string, 'i') };
+      }
+      if (name) {
+        query.name = { $regex: new RegExp(name as string, 'i') };
+      }
+      if (subdomain) {
+        // Use a case-insensitive regex for the subdomain filter
+        query.subdomain = { $regex: new RegExp(subdomain as string, 'i') };
+      }
+
+      if (topicsFilter) {
+        // Filter documents where at least one element in subdomainTopics matches one of the topics in topicsFilter
+        query.subdomainTopics = { $in: topicsFilter };
+      }
+
+      teams = await Team.find(query).skip(skip).limit(limitNum);
+      totalCount = await Team.countDocuments(query);
     } else {
-      teams = await Team.find().skip(skip).limit(limitNum);
-      totalCount = await Team.countDocuments({});
+      // Build a dynamic query based on the available filters
+      const query: any = {};
+      if (name) {
+        query.name = { $regex: new RegExp(name as string, 'i') };
+      }
+      if (domain) {
+        query.domain = { $regex: new RegExp(domain as string, 'i') };
+      }
+      if (subdomain) {
+        // Use a case-insensitive regex for the subdomain filter
+        query.subdomain = { $regex: new RegExp(subdomain as string, 'i') };
+      }
+
+      if (topicsFilter) {
+        query.subdomainTopics = { $in: topicsFilter };
+      }
+  
+      teams = await Team.find(query).skip(skip).limit(limitNum);
+      totalCount = await Team.countDocuments(query);
     }
 
     const totalPages = Math.ceil(totalCount / limitNum);
-    res.status(200).json({ message: "successful", currentPage: pageNum,
-      perPage: limitNum, totalPages, totalCount, data: teams });
+    res.status(200).json({
+      message: "successful",
+      currentPage: pageNum,
+      perPage: limitNum,
+      totalPages,
+      totalCount,
+      data: teams,
+    });
   } catch (error: any) {
+  
     throw new Error(error);
   }
 });
+
 
 //@desc Get Team
 //@route GET /api/teams/:id
