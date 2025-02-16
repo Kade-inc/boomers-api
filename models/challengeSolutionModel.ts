@@ -3,11 +3,11 @@ import { Schema, model } from "mongoose";
 // id
 // Challenge id
 // User id
-// Status: IN PROGRESS, COMPLETED, UNSTARTED
+// Status: IN PROGRESS(1), COMPLETED (2), UNSTARTED (0)
 // updatedAt
 // createdAt
 // Steps: Either include array of steps here or reference steps table
-// valid
+// valid: False if no steps have been provided, Valid if all steps have been provided
 // Feedback
 // percentageCompleted
 // completedDate
