@@ -1,14 +1,28 @@
 import { Schema, model } from "mongoose";
 
 interface IChat {
-  members: any;
+  members: string[];
+  isGroup?: boolean;
+  groupName?: string;
+  admin?: string; // could be the ID of the user who created the group
 }
 
 const chatSchema = new Schema<IChat>(
   {
     members: {
-      type: Array,
+      type: [String],
+      required: true
     },
+    isGroup: {
+      type: Boolean,
+      default: false,
+    },
+    groupName: {
+      type: String
+    },
+    admin: {
+      type: String
+    }
   },
   {
     timestamps: true,
