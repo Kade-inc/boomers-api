@@ -528,9 +528,14 @@ export const updateIndividualTeamChallengeV2 = asyncHandler(
       } 
       
      
-      const challenge = await TeamChallenge.findById({
+      const challenge:any = await TeamChallenge.findById({
         _id: req.params.challengeId,
+      }).populate({
+        path: "team_id",
+        model: "Team",
+        select: "name",
       });
+
       if (!challenge) {
         res.status(404).json({ message: "Challenge not found" });
         return
@@ -568,7 +573,7 @@ export const updateIndividualTeamChallengeV2 = asyncHandler(
         for (const member of membersToNotify) {
           await Notification.create({
             user: member.user_id,
-            message: `New challenge "${challenge.challenge_name}" has been created in your team.`,
+            message: `New challenge "${challenge.challenge_name}" has been created in "${challenge.team_id.name}".`,
             reference: challenge._id,
             referenceModel: "TeamChallenge",
           });
