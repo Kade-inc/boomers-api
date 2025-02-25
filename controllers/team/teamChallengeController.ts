@@ -5,6 +5,7 @@ import { CustomRequest } from "../../middleware/validateTokenHandler";
 import TeamChallenge from "../../models/teamChallengeModel";
 import TeamMember from "../../models/teamMemberModel";
 import UserProfile from "../../models/userProfileModel";
+import Notification from "../../models/notificationModel";
 import ChallengeComment from "../../models/challengeCommentModel";
 import crypto from "crypto";
 
@@ -85,6 +86,7 @@ export const createTeamChallenge = asyncHandler(
         reward,
         valid: true,
       });
+
       res.status(201).json({ message: "success", data: challenge });
     } catch (error: any) {
       throw new Error(error);
@@ -535,7 +537,7 @@ export const updateIndividualTeamChallengeV2 = asyncHandler(
       } 
 
       // Validation for due_date and difficulty
-      const { due_date, difficulty } = req.body;
+      const { due_date, difficulty, valid } = req.body;
 
       if (due_date && new Date(due_date) <= new Date()) {
         res.status(400).json({ message: "Due date can't be in the past" });
@@ -554,6 +556,27 @@ export const updateIndividualTeamChallengeV2 = asyncHandler(
           new: true,
         }
       );
+
+      if (valid) {
+        // Retrieve all team members for this team
+        const teamMembers = await TeamMember.find({ team_id: req.params.teamId }).lean();
+
+        const membersToNotify = teamMembers.filter(
+          (member) => member.user_id.toString() !== req.user.id
+        );
+        
+        for (const member of membersToNotify) {
+          await Notification.create({
+            user: member.user_id,
+            message: `New challenge "${challenge.challenge_name}" has been created in your team.`,
+            reference: challenge._id,
+            referenceModel: "TeamChallenge",
+          });
+        
+          // If using real-time notifications (e.g., with Socket.io), you might also emit an event here:
+          // io.to(member.user_id.toString()).emit('newNotification', { ... });
+        }
+      }
 
       res
         .status(200)
