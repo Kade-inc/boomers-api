@@ -6,8 +6,9 @@ const notificationRouter = express.Router();
 notificationRouter.use(validateToken);
 
 notificationRouter.get("/", getUserNotifications)
+notificationRouter.patch("/read-all", markAllNotificationsAsRead)
 notificationRouter.get("/:id", getNotificationById)
 notificationRouter.patch("/:id", updateNotificationStatus);
-notificationRouter.patch("/read-all", markAllNotificationsAsRead)
+
 
 export default notificationRouter;
