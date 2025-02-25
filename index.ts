@@ -1,15 +1,14 @@
-import express, { Express, Request, Response } from "express";
-import userRouter from "./routes/userRoutes";
+import express, { Express } from "express";
+import http from "http"; // Import Node.js HTTP module
+import { Server } from "socket.io"; // Import Socket.IO
 
 import { errorHandler } from "./middleware/errorHandler";
 import connectDb from "./config/dbConnection";
 import swaggerDocs from "./swagger";
 
-import passport from "passport";
 import dotenv from "dotenv";
-import cookieParser from "cookie-parser";
-const cookieSession = require("cookie-session");
-require("./config/passport-setup");
+
+import userRouter from "./routes/userRoutes";
 import userProfileRouter from "./routes/userProfileRoutes";
 import teamRouter from "./routes/team/teamRoutes";
 import teamMemberRouter from "./routes/team/teamMemberRoutes";
@@ -27,33 +26,12 @@ dotenv.config();
 
 connectDb();
 const app: Express = express();
-const session = require("express-session");
 
 const port = process.env.PORT || 5001;
 
 app.use(cors())
-app.use(cookieParser());
 app.use(express.json());
-// //Setting up cookies
-// app.use(
-//   cookieSession({
-//     name: "tuto-session",
-//     keys: ["key1", "key2"],
-//   })
-// );
 
-app.use(
-  session({
-    secret: "keyboard cat",
-    resave: false,
-    saveUninitialized: true,
-    cookie: { secure: true },
-  })
-);
-//Passport Initialized
-app.use(passport.initialize());
-//Setting Up Session
-app.use(passport.session());
 app.use("/api/users", [userRouter, userProfileRouter]);
 app.use("/api/teams", [teamRouter, teamChallengeRouter]);
 app.use("/api/team-member", teamMemberRouter);
@@ -67,21 +45,38 @@ app.use("/api/notifications", notificationRouter)
 app.use(errorHandler);
 app.disable("x-powered-by"); // less hackers know about our stack
 
-app.get(
-  "/google",
-  passport.authenticate("google", { scope: ["profile", "email"] })
-);
+// Create an HTTP server from the Express app
+const server = http.createServer(app);
 
-app.get(
-  "/google/callback",
-  passport.authenticate("google", { failureRedirect: `${process.env.FRONTEND_URL}` }),
-  (req, res) => {
-    // Redirect to dashboard on successful registration
-    res.redirect(`${process.env.FRONTEND_URL}/dashboard`);
-  }
-);
+// Initialize Socket.IO and attach it to the HTTP server
+const io = new Server(server, {
+  cors: {
+    origin: `http://localhost:5173`, // update to your frontend URL
+    methods: ["GET", "POST", "PATCH"],
+  },
+});
 
-app.listen(port, () => {
+// Optional: Store the io instance in app.locals so it can be accessed in your controllers or routes
+app.locals.io = io;
+
+// Set up Socket.IO connection events
+io.on("connection", (socket) => {
+  console.log(`Socket connected: ${socket.id}`);
+
+  // Example: join a room using the user's ID
+  socket.on("join", (userId: string) => {
+    socket.join(userId);
+    console.log(`Socket ${socket.id} joined room: ${userId}`);
+  });
+
+  // Listen for disconnect events
+  socket.on("disconnect", () => {
+    console.log(`Socket disconnected: ${socket.id}`);
+  });
+});
+
+
+server.listen(port, () => {
   console.log(`Server running on http://localhost:${port}`);
 });
 

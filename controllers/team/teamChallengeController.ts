@@ -571,7 +571,7 @@ export const updateIndividualTeamChallengeV2 = asyncHandler(
         );
         
         for (const member of membersToNotify) {
-          await Notification.create({
+          const notification = await Notification.create({
             user: member.user_id,
             message: `New challenge "${challenge.challenge_name}" has been created in "${challenge.team_id.name}".`,
             reference: challenge._id,
@@ -580,6 +580,9 @@ export const updateIndividualTeamChallengeV2 = asyncHandler(
         
           // If using real-time notifications (e.g., with Socket.io), you might also emit an event here:
           // io.to(member.user_id.toString()).emit('newNotification', { ... });
+          const io = req.app.locals.io;
+          io.to(member.user_id.toString()).emit("newNotification", notification);
+          console.log("EMITTED! ", notification)
         }
       }
 
