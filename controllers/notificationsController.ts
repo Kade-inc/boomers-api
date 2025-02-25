@@ -19,7 +19,8 @@ export const updateNotificationStatus = asyncHandler(async (req:CustomRequest, r
         res.status(404);
         throw new Error("Notification not found");
     }
-    if (req.user.id !== notification.user) {
+
+    if (req.user.id !== notification.user.toString()) {
         res.status(403).json({'error': "unauthorizaed"})
         return
     }
