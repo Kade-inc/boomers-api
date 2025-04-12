@@ -4,7 +4,6 @@ import Team from "../../models/teamModel";
 import { CustomRequest } from "../../middleware/validateTokenHandler";
 import TeamChallenge from "../../models/teamChallengeModel";
 import TeamMember from "../../models/teamMemberModel";
-import UserProfile from "../../models/userProfileModel";
 import Notification from "../../models/notificationModel";
 import ChallengeComment from "../../models/challengeCommentModel";
 import crypto from "crypto";
@@ -17,7 +16,6 @@ interface MulterRequest extends Request {
 import {
   PutObjectCommand,
   S3Client,
-  GetObjectCommand,
   DeleteObjectCommand,
 } from "@aws-sdk/client-s3";
 
@@ -571,15 +569,17 @@ export const updateIndividualTeamChallengeV2 = asyncHandler(
         );
         
         for (const member of membersToNotify) {
-          await Notification.create({
+          const notification = await Notification.create({
             user: member.user_id,
             message: `New challenge "${challenge.challenge_name}" has been created in "${challenge.team_id.name}".`,
             reference: challenge._id,
             referenceModel: "TeamChallenge",
           });
         
-          // If using real-time notifications (e.g., with Socket.io), you might also emit an event here:
-          // io.to(member.user_id.toString()).emit('newNotification', { ... });
+          const io = req.app.locals.io;
+          // Emit notification only to the individual user's room.
+          io.to(member.user_id.toString()).emit("pushNotification", notification);
+          console.log("Notification emitted to user room " + member.user_id.toString(), notification);
         }
       }
 

@@ -1,15 +1,18 @@
-import express, { Express, Request, Response } from "express";
-import userRouter from "./routes/userRoutes";
+import express, { Express } from "express";
+import http from "http"; // Import Node.js HTTP module
+import { Server } from "socket.io"; // Import Socket.IO
 
 import { errorHandler } from "./middleware/errorHandler";
 import connectDb from "./config/dbConnection";
 import swaggerDocs from "./swagger";
-
 import passport from "passport";
+
 import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
 const cookieSession = require("cookie-session");
 require("./config/passport-setup");
+
+import userRouter from "./routes/userRoutes";
 import userProfileRouter from "./routes/userProfileRoutes";
 import teamRouter from "./routes/team/teamRoutes";
 import teamMemberRouter from "./routes/team/teamMemberRoutes";
@@ -32,8 +35,9 @@ const session = require("express-session");
 const port = process.env.PORT || 5001;
 
 app.use(cors())
-app.use(cookieParser());
+app.use(cookieParser()); // Don't know if I even use this
 app.use(express.json());
+
 // //Setting up cookies
 // app.use(
 //   cookieSession({
@@ -54,6 +58,8 @@ app.use(
 app.use(passport.initialize());
 //Setting Up Session
 app.use(passport.session());
+
+
 app.use("/api/users", [userRouter, userProfileRouter]);
 app.use("/api/teams", [teamRouter, teamChallengeRouter]);
 app.use("/api/team-member", teamMemberRouter);
@@ -81,8 +87,46 @@ app.get(
   }
 );
 
-app.listen(port, () => {
+// Create an HTTP server from the Express app
+const server = http.createServer(app);
+
+// Initialize Socket.IO and attach it to the HTTP server
+export const io = new Server(server, {
+  cors: {
+    origin: `http://localhost:5173`, // update to your frontend URL
+    methods: ["GET", "POST", "PATCH"],
+  },
+});
+
+// Optional: Store the io instance in app.locals so it can be accessed in your controllers or routes
+app.locals.io = io;
+
+// Set up Socket.IO connection events
+
+io.on("connection", (socket) => {
+  console.log(`Socket connected: ${socket.id}`);
+  
+  socket.on("joinUser", ({ userId }) => {
+    socket.join(userId);
+    console.log(`Socket ${socket.id} joined personal room for user ${userId}`);
+  });
+  
+  socket.on("joinTeam", ({ teamId }) => {
+    socket.join(`team_${teamId}`);
+    console.log(`Socket ${socket.id} joined room team_${teamId}`);
+  });
+
+
+
+  socket.on("disconnect", () => {
+    console.log(`Socket disconnected: ${socket.id}`);
+  });
+});
+
+
+server.listen(port, () => {
   console.log(`Server running on http://localhost:${port}`);
+ 
 });
 
 swaggerDocs(app, port);
