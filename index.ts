@@ -62,20 +62,24 @@ app.locals.io = io;
 // Set up Socket.IO connection events
 
 io.on("connection", (socket) => {
-  console.log("New client connected:", socket.id);
-
-  // Listen for a joinTeam event and join the respective room
+  console.log(`Socket connected: ${socket.id}`);
+  
+  socket.on("joinUser", ({ userId }) => {
+    socket.join(userId);
+    console.log(`Socket ${socket.id} joined personal room for user ${userId}`);
+  });
+  
   socket.on("joinTeam", ({ teamId }) => {
-    // Each team room is prefixed to keep it namespaced, e.g., "team_123"
     socket.join(`team_${teamId}`);
     console.log(`Socket ${socket.id} joined room team_${teamId}`);
   });
 
+
+
   socket.on("disconnect", () => {
-    console.log("Client disconnected:", socket.id);
+    console.log(`Socket disconnected: ${socket.id}`);
   });
 });
-
 
 
 server.listen(port, () => {

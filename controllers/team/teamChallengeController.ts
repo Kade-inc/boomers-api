@@ -510,26 +510,26 @@ export const createTeamChallengeV2 = asyncHandler(
   }
 );
 
-
 //@desc Update Individual Team Challenge
-//@route PUT /api/teams/:teamId/challenges/:challengeId
+//@route PUT /api/teams/:id/challenges/:challengeId
 //access private
 export const updateIndividualTeamChallengeV2 = asyncHandler(
   async (req: CustomRequest, res: Response) => {
     try {
-      // Find the team by teamId from the route params
       const team = await Team.findById({ _id: req.params.teamId });
+
       if (!team) {
         res.status(404).json({ message: "Team not found" });
-        return 
-      }
-
+        return
+      } 
+      
       if (req.user.id !== team.owner_id.toString()) {
         res.status(403).json({ message: "User does not own this team" });
-        return 
-      }
-
-      const challenge: any = await TeamChallenge.findById({
+        return
+      } 
+      
+     
+      const challenge:any = await TeamChallenge.findById({
         _id: req.params.challengeId,
       }).populate({
         path: "team_id",
@@ -538,42 +538,39 @@ export const updateIndividualTeamChallengeV2 = asyncHandler(
       });
 
       if (!challenge) {
-       res.status(404).json({ message: "Challenge not found" });
-       return 
-      }
+        res.status(404).json({ message: "Challenge not found" });
+        return
+      } 
 
       // Validation for due_date and difficulty
       const { due_date, difficulty, valid } = req.body;
 
       if (due_date && new Date(due_date) <= new Date()) {
         res.status(400).json({ message: "Due date can't be in the past" });
-        return 
+        return
       }
 
       if (difficulty !== undefined && (difficulty < 1 || difficulty > 5)) {
         res.status(400).json({ message: "Difficulty must be between 1 and 5" });
-        return 
+        return
       }
 
       const updatedChallenge = await TeamChallenge.findByIdAndUpdate(
         req.params.challengeId,
         req.body,
-        { new: true }
+        {
+          new: true,
+        }
       );
-
-      // Retrieve the Socket.IO instance stored in app.locals
-      const io = req.app.locals.io;
 
       if (valid) {
         // Retrieve all team members for this team
         const teamMembers = await TeamMember.find({ team_id: req.params.teamId }).lean();
 
-        // Optionally, filter out the user who made the request
         const membersToNotify = teamMembers.filter(
           (member) => member.user_id.toString() !== req.user.id
         );
-
-        // Create a notification and emit it to the team room
+        
         for (const member of membersToNotify) {
           const notification = await Notification.create({
             user: member.user_id,
@@ -581,22 +578,26 @@ export const updateIndividualTeamChallengeV2 = asyncHandler(
             reference: challenge._id,
             referenceModel: "TeamChallenge",
           });
-
-          // Emit to the room corresponding to this team
-          io.to(`team_${req.params.teamId}`).emit("pushNotification", notification);
-          console.log("Notification emitted to room team_" + req.params.teamId, notification);
+        
+          const io = req.app.locals.io;
+          // Emit notification only to the individual user's room.
+          io.to(member.user_id.toString()).emit("pushNotification", notification);
+          console.log("Notification emitted to user room " + member.user_id.toString(), notification);
         }
       }
 
-      res.status(200).json({ message: "Update successful", data: updatedChallenge });
+      res
+        .status(200)
+        .json({ message: "Update successful", data: updatedChallenge });
+      
+        
     } catch (error: any) {
-      console.error(error);
-      res.status(500);
-      throw new(error);
+      console.log(error);
+      res.status(500)
+      throw new(error)
     }
   }
-);
-       
+);            
 
 
 // @desc Delete Multiple Specific Team Challenges
