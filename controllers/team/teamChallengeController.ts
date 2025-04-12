@@ -4,7 +4,6 @@ import Team from "../../models/teamModel";
 import { CustomRequest } from "../../middleware/validateTokenHandler";
 import TeamChallenge from "../../models/teamChallengeModel";
 import TeamMember from "../../models/teamMemberModel";
-import UserProfile from "../../models/userProfileModel";
 import Notification from "../../models/notificationModel";
 import ChallengeComment from "../../models/challengeCommentModel";
 import crypto from "crypto";
@@ -17,10 +16,8 @@ interface MulterRequest extends Request {
 import {
   PutObjectCommand,
   S3Client,
-  GetObjectCommand,
   DeleteObjectCommand,
 } from "@aws-sdk/client-s3";
-// import { io } from "../..";
 
 const bucketName = process.env.BUCKET_NAME;
 const bucketRegion = process.env.BUCKET_REGION;
