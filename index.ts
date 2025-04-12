@@ -5,8 +5,12 @@ import { Server } from "socket.io"; // Import Socket.IO
 import { errorHandler } from "./middleware/errorHandler";
 import connectDb from "./config/dbConnection";
 import swaggerDocs from "./swagger";
+import passport from "passport";
 
 import dotenv from "dotenv";
+import cookieParser from "cookie-parser";
+const cookieSession = require("cookie-session");
+require("./config/passport-setup");
 
 import userRouter from "./routes/userRoutes";
 import userProfileRouter from "./routes/userProfileRoutes";
@@ -26,11 +30,35 @@ dotenv.config();
 
 connectDb();
 const app: Express = express();
+const session = require("express-session");
 
 const port = process.env.PORT || 5001;
 
 app.use(cors())
+app.use(cookieParser()); // Don't know if I even use this
 app.use(express.json());
+
+// //Setting up cookies
+// app.use(
+//   cookieSession({
+//     name: "tuto-session",
+//     keys: ["key1", "key2"],
+//   })
+// );
+
+app.use(
+  session({
+    secret: "keyboard cat",
+    resave: false,
+    saveUninitialized: true,
+    cookie: { secure: true },
+  })
+);
+//Passport Initialized
+app.use(passport.initialize());
+//Setting Up Session
+app.use(passport.session());
+
 
 app.use("/api/users", [userRouter, userProfileRouter]);
 app.use("/api/teams", [teamRouter, teamChallengeRouter]);
@@ -44,6 +72,20 @@ app.use("/api/user-requests", requestsRouter)
 app.use("/api/notifications", notificationRouter)
 app.use(errorHandler);
 app.disable("x-powered-by"); // less hackers know about our stack
+
+app.get(
+  "/google",
+  passport.authenticate("google", { scope: ["profile", "email"] })
+);
+
+app.get(
+  "/google/callback",
+  passport.authenticate("google", { failureRedirect: `${process.env.FRONTEND_URL}` }),
+  (req, res) => {
+    // Redirect to dashboard on successful registration
+    res.redirect(`${process.env.FRONTEND_URL}/dashboard`);
+  }
+);
 
 // Create an HTTP server from the Express app
 const server = http.createServer(app);
