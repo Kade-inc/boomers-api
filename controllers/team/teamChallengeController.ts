@@ -20,6 +20,7 @@ import {
   GetObjectCommand,
   DeleteObjectCommand,
 } from "@aws-sdk/client-s3";
+// import { io } from "../..";
 
 const bucketName = process.env.BUCKET_NAME;
 const bucketRegion = process.env.BUCKET_REGION;
@@ -578,11 +579,10 @@ export const updateIndividualTeamChallengeV2 = asyncHandler(
             referenceModel: "TeamChallenge",
           });
         
-          // If using real-time notifications (e.g., with Socket.io), you might also emit an event here:
-          // io.to(member.user_id.toString()).emit('newNotification', { ... });
           const io = req.app.locals.io;
-          io.to(member.user_id.toString()).emit("newNotification", notification);
-          console.log("EMITTED! ", notification)
+          // Emit notification only to the individual user's room.
+          io.to(member.user_id.toString()).emit("pushNotification", notification);
+          console.log("Notification emitted to user room " + member.user_id.toString(), notification);
         }
       }
 

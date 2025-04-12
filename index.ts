@@ -49,7 +49,7 @@ app.disable("x-powered-by"); // less hackers know about our stack
 const server = http.createServer(app);
 
 // Initialize Socket.IO and attach it to the HTTP server
-const io = new Server(server, {
+export const io = new Server(server, {
   cors: {
     origin: `http://localhost:5173`, // update to your frontend URL
     methods: ["GET", "POST", "PATCH"],
@@ -60,16 +60,22 @@ const io = new Server(server, {
 app.locals.io = io;
 
 // Set up Socket.IO connection events
+
 io.on("connection", (socket) => {
   console.log(`Socket connected: ${socket.id}`);
-
-  // Example: join a room using the user's ID
-  socket.on("join", (userId: string) => {
+  
+  socket.on("joinUser", ({ userId }) => {
     socket.join(userId);
-    console.log(`Socket ${socket.id} joined room: ${userId}`);
+    console.log(`Socket ${socket.id} joined personal room for user ${userId}`);
+  });
+  
+  socket.on("joinTeam", ({ teamId }) => {
+    socket.join(`team_${teamId}`);
+    console.log(`Socket ${socket.id} joined room team_${teamId}`);
   });
 
-  // Listen for disconnect events
+
+
   socket.on("disconnect", () => {
     console.log(`Socket disconnected: ${socket.id}`);
   });
@@ -78,6 +84,7 @@ io.on("connection", (socket) => {
 
 server.listen(port, () => {
   console.log(`Server running on http://localhost:${port}`);
+ 
 });
 
 swaggerDocs(app, port);
