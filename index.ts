@@ -20,6 +20,7 @@ import adviceRouter from "./routes/adviceRoutes";
 import domainRouter from "./routes/domainRoutes";
 import requestsRouter from "./routes/requestsRoutes";
 import notificationRouter from "./routes/notificationRoutes";
+import searchRouter from "./routes/searchRoutes";
 
 const cors = require('cors')
 dotenv.config();
@@ -45,6 +46,7 @@ app.use("/api/advice", adviceRouter)
 app.use("/api/domains", domainRouter)
 app.use("/api/user-requests", requestsRouter)
 app.use("/api/notifications", notificationRouter)
+app.use("/api/search", searchRouter)
 app.use(errorHandler);
 app.disable("x-powered-by"); // less hackers know about our stack
 
