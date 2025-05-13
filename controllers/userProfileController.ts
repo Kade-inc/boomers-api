@@ -186,7 +186,7 @@ export const updateUserProfile = asyncHandler(async (req: any, res) => {
           lastName: updateProfileBody.lastName,
           phoneNumber: updateProfileBody.phoneNumber,
           bio: updateProfileBody.bio,
-          interests: updateProfileBody.interests,
+          interests: JSON.parse(updateProfileBody.interests),
           gender: updateProfileBody.gender,
           profile_picture: imageKey,
           job: updateProfileBody.job,
@@ -212,7 +212,7 @@ export const updateUserProfile = asyncHandler(async (req: any, res) => {
         lastName: updateProfileBody.lastName,
         phoneNumber: updateProfileBody.phoneNumber,
         bio: updateProfileBody.bio,
-        interests: updateProfileBody.interests,
+        interests: JSON.parse(updateProfileBody.interests),
         gender: updateProfileBody.gender,
         job: updateProfileBody.job,
         location: updateProfileBody.location
