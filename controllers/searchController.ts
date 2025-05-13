@@ -26,7 +26,7 @@ export const search = asyncHandler(
                     { name: { $regex: query, $options: "i" } },
                     { teamUsername: { $regex: query, $options: "i" } }
                 ]
-                });
+                }).select("_id name").limit(10);
             
                 // Search Profiles by name or job
                 const profiles = await UserProfile.find({
@@ -35,14 +35,35 @@ export const search = asyncHandler(
                     { lastName: { $regex: query, $options: "i" } },
                     { username: { $regex: query, $options: "i" } },
                 ]
-                }).select("firstName lastName username profile_picture");
+                }).select("_id firstName lastName username profile_picture").limit(10);
 
                 const challenges = await TeamChallenge.find({
                     $or: [
                       { challenge_name: { $regex: query, $options: "i" } },
                     ],
                     valid: true, // only show valid challenges
+                  }).select("_id challenge_name").limit(10);
+
+                  const teamCount = await Team.countDocuments({
+                    $or: [
+                      { name: { $regex: query, $options: "i" } },
+                      { teamUsername: { $regex: query, $options: "i" } }
+                    ]
                   });
+                  
+                  const profileCount = await UserProfile.countDocuments({
+                    $or: [
+                      { firstName: { $regex: query, $options: "i" } },
+                      { lastName: { $regex: query, $options: "i" } },
+                      { username: { $regex: query, $options: "i" } },
+                    ]
+                  });
+                  
+                  const challengeCount = await TeamChallenge.countDocuments({
+                    $or: [{ challenge_name: { $regex: query, $options: "i" } }],
+                    valid: true
+                  });
+                  
             
             // When using indexes revisit this
             // Check if query.length < 3 to do the one above. If > 3, use indexes
@@ -72,7 +93,22 @@ export const search = asyncHandler(
               );
             }
         
-            res.json({ teams, profiles, challenges });
+            res.status(200).json({data: {
+                teams: {
+                    results: teams,
+                    hasMore: teamCount > 10
+                  },
+                  profiles: {
+                    results: profiles,
+                    hasMore: profileCount > 10
+                  },
+                  challenges: {
+                    results: challenges,
+                    hasMore: challengeCount > 10
+                  }
+            }
+                
+            });
           } catch (err) {
             res.status(500)
             throw new Error(`Search failed with error: ${err}`);
@@ -99,3 +135,97 @@ export const searchHistory = asyncHandler(
           }
     }
 )
+
+export const allSearchTeams = asyncHandler(
+    async (req: CustomRequest, res: Response) => {
+      const searchQuery = String(req.query.q || "").trim();
+      const page = Number(req.query.page || 1);
+      const pageSize = 20;
+  
+      const teams = await Team.find({
+        $or: [
+          { name: { $regex: searchQuery, $options: "i" } },
+          { teamUsername: { $regex: searchQuery, $options: "i" } }
+        ]
+      })
+      .skip((page - 1) * pageSize)
+      .limit(pageSize);
+  
+      const total = await Team.countDocuments({
+        $or: [
+          { name: { $regex: searchQuery, $options: "i" } },
+          { teamUsername: { $regex: searchQuery, $options: "i" } }
+        ]
+      });
+  
+      res.json({
+        results: teams,
+        page,
+        totalPages: Math.ceil(total / pageSize),
+        total
+      });
+    }
+  );
+
+  export const allSearchChallenges = asyncHandler(
+    async (req: CustomRequest, res: Response) => {
+      const searchQuery = String(req.query.q || "").trim();
+      const page = Number(req.query.page || 1);
+      const pageSize = 20;
+  
+      const challenges = await TeamChallenge.find({
+        $or: [
+          { challenge_name: { $regex: searchQuery, $options: "i" } },
+        ]
+      })
+      .skip((page - 1) * pageSize)
+      .limit(pageSize);
+  
+      const total = await TeamChallenge.countDocuments({
+        $or: [
+          { challenge_name: { $regex: searchQuery, $options: "i" } },
+        ]
+      });
+  
+      res.json({
+        results: challenges,
+        page,
+        totalPages: Math.ceil(total / pageSize),
+        total
+      });
+    }
+  );
+  
+  export const allSearchProfiles = asyncHandler(
+    async (req: CustomRequest, res: Response) => {
+      const searchQuery = String(req.query.q || "").trim();
+      const page = Number(req.query.page || 1);
+      const pageSize = 20;
+  
+      const profiles = await UserProfile.find({
+        $or: [
+            { firstName: { $regex: searchQuery, $options: "i" } },
+            { lastName: { $regex: searchQuery, $options: "i" } },
+            { username: { $regex: searchQuery, $options: "i" } },
+        ]
+      })
+      .skip((page - 1) * pageSize)
+      .limit(pageSize);
+  
+      const total = await UserProfile.countDocuments({
+        $or: [
+            { firstName: { $regex: searchQuery, $options: "i" } },
+            { lastName: { $regex: searchQuery, $options: "i" } },
+            { username: { $regex: searchQuery, $options: "i" } },
+          ]
+      });
+  
+      res.json({
+        results: profiles,
+        page,
+        totalPages: Math.ceil(total / pageSize),
+        total
+      });
+    }
+  );
+  
