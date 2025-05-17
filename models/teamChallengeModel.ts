@@ -102,6 +102,9 @@ const teamChallengeSchema = new Schema<ITeamChallenge>(
   }
 );
 
+teamChallengeSchema.index({
+  challenge_name: "text"
+});
 const TeamChallenge = model<ITeamChallenge>(
   "TeamChallenge",
   teamChallengeSchema

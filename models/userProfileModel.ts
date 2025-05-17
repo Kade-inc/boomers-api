@@ -73,6 +73,8 @@ const userProfileSchema = new Schema<IUserProfile>(
   }
 );
 
+userProfileSchema.index({ firstName: "text", lastName: "text", username: "text", });
+
 const UserProfile = model<IUserProfile>("UserProfile", userProfileSchema);
 
 export default UserProfile;

@@ -57,6 +57,8 @@ const teamSchema = new Schema<ITeam>(
   }
 );
 
+teamSchema.index({ name: "text", teamUsername: "text" });
+
 const Team = model<ITeam>("Team", teamSchema);
 
 export default Team;
