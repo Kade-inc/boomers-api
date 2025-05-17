@@ -26,16 +26,21 @@ export const search = asyncHandler(
                     { name: { $regex: query, $options: "i" } },
                     { teamUsername: { $regex: query, $options: "i" } }
                 ]
-                }).select("_id name").limit(10);
+                }).select("_id name teamColor").limit(10);
             
                 // Search Profiles by name or job
-                const profiles = await UserProfile.find({
+                let profiles = await UserProfile.find({
                 $or: [
                     { firstName: { $regex: query, $options: "i" } },
                     { lastName: { $regex: query, $options: "i" } },
                     { username: { $regex: query, $options: "i" } },
                 ]
                 }).select("_id firstName lastName username profile_picture").limit(10);
+
+                profiles.map((profile:any) => {
+                    profile.profile_picture = profile.profile_picture ? `${process.env.S3_BUCKET_PREFIX}${profile.profile_picture}` : null
+                }
+                )
 
                 const challenges = await TeamChallenge.find({
                     $or: [
@@ -129,7 +134,7 @@ export const searchHistory = asyncHandler(
             const history = await SearchHistory.find({ userId })
               .sort({ timestamp: -1 })
               .limit(10); // return latest 10
-            res.json(history);
+            res.status(200).json({data: history});
           } catch (err) {
             res.status(500).json({ message: "Failed to get search history", error: err });
           }
@@ -228,4 +233,22 @@ export const allSearchTeams = asyncHandler(
       });
     }
   );
+  
+export const clearSearchHistory = asyncHandler(
+    async (req: CustomRequest, res: Response) => {
+        const userId = req.user.id
+
+        if (!userId || !mongoose.Types.ObjectId.isValid(userId as string)) {
+            res.status(400).json({ message: "Invalid user ID" });
+            return 
+        }
+
+        try {
+            await SearchHistory.deleteMany({ userId });
+            res.status(200).json({ message: "Search history cleared successfully" });
+        } catch (err) {
+            res.status(500).json({ message: "Failed to clear search history", error: err });
+        }
+    }
+)
   
