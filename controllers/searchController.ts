@@ -26,7 +26,7 @@ export const search = asyncHandler(
                     { name: { $regex: query, $options: "i" } },
                     { teamUsername: { $regex: query, $options: "i" } }
                 ]
-                }).select("_id name teamColor").limit(10);
+                }).select("_id name teamColor domain subdomain subdomainTopics").limit(10);
             
                 // Search Profiles by name or job
                 let profiles = await UserProfile.find({
