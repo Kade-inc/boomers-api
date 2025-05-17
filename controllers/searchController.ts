@@ -145,7 +145,7 @@ export const allSearchTeams = asyncHandler(
     async (req: CustomRequest, res: Response) => {
       const searchQuery = String(req.query.q || "").trim();
       const page = Number(req.query.page || 1);
-      const pageSize = 20;
+      const pageSize = 10;
   
       const teams = await Team.find({
         $or: [
@@ -176,7 +176,7 @@ export const allSearchTeams = asyncHandler(
     async (req: CustomRequest, res: Response) => {
       const searchQuery = String(req.query.q || "").trim();
       const page = Number(req.query.page || 1);
-      const pageSize = 20;
+      const pageSize = 10;
   
       const challenges = await TeamChallenge.find({
         $or: [
@@ -205,7 +205,7 @@ export const allSearchTeams = asyncHandler(
     async (req: CustomRequest, res: Response) => {
       const searchQuery = String(req.query.q || "").trim();
       const page = Number(req.query.page || 1);
-      const pageSize = 20;
+      const pageSize =10;
   
       const profiles = await UserProfile.find({
         $or: [
@@ -216,6 +216,12 @@ export const allSearchTeams = asyncHandler(
       })
       .skip((page - 1) * pageSize)
       .limit(pageSize);
+
+
+      profiles.map((profile:any) => {
+        profile.profile_picture = profile.profile_picture ? `${process.env.S3_BUCKET_PREFIX}${profile.profile_picture}` : null
+      }
+      )
   
       const total = await UserProfile.countDocuments({
         $or: [
