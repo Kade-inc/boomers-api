@@ -35,7 +35,7 @@ export const search = asyncHandler(
                     { lastName: { $regex: query, $options: "i" } },
                     { username: { $regex: query, $options: "i" } },
                 ]
-                }).select("_id firstName lastName username profile_picture").limit(10);
+                }).select("user_id firstName lastName username profile_picture").limit(10);
 
                 profiles.map((profile:any) => {
                     profile.profile_picture = profile.profile_picture ? `${process.env.S3_BUCKET_PREFIX}${profile.profile_picture}` : null
