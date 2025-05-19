@@ -38,7 +38,7 @@ const s3 = new S3Client({
 export const createTeam = asyncHandler(
   async (req: CustomRequest, res: Response) => {
     try {
-      const { name, teamUsername, domain, subDomain, subDomainTopics, teamColor } =
+      const { name, teamUsername, domain, subdomain, subdomainTopics, teamColor } =
         req.body;
       if (!name.trim() || !domain.trim()) {
         res.status(400);
@@ -60,19 +60,19 @@ export const createTeam = asyncHandler(
       }
 
       const subDomainExists: any = await TeamSubDomain.findOne({
-        name: subDomain,
+        name: subdomain,
       });
 
       if (
         subDomainExists?.parentDomain.toString() !== domainExists._id.toString()
       ) {
-        res.status(400).json({ error: "Sub Domain does not belong to domain" });
+        res.status(400).json({ error: "Subdomain does not belong to domain" });
         return;
       }
 
       const domainTopics = await DomainTopic.find({});
       const missingTopics: any = [];
-      subDomainTopics.map((topic: any) => {
+      subdomainTopics.map((topic: any) => {
         const foundTopic = domainTopics.some((el) => el.name === topic);
         if (!foundTopic) {
           missingTopics.push(topic);
@@ -108,8 +108,8 @@ export const createTeam = asyncHandler(
           teamUsername,
           owner_id: req.user.id,
           domain: domainExists.name,
-          subdomain: subDomain,
-          subdomainTopics: subDomainTopics,
+          subdomain: subdomain,
+          subdomainTopics: subdomainTopics,
           displayImage: randomImageName(),
           teamColor: teamColor
         });
@@ -127,8 +127,8 @@ export const createTeam = asyncHandler(
         name,
         teamUsername,
         domain: domainExists.name,
-        subdomain: subDomain,
-        subdomainTopics: subDomainTopics,
+        subdomain: subdomain,
+        subdomainTopics: subdomainTopics,
         owner_id: req.user.id,
         teamColor: teamColor
       });
