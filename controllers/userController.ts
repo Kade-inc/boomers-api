@@ -20,7 +20,7 @@ dotenv.config();
 //access public
 const registerUser = asyncHandler(async (req: Request, res: Response) => {
   try {
-    const { phoneNumber, email, password, username, countryCode } = req.body;
+    const { phoneNumber, email, password, username, countryCode, source } = req.body;
 
     if (!email && !phoneNumber) {
       res.status(400);
@@ -125,12 +125,21 @@ const registerUser = asyncHandler(async (req: Request, res: Response) => {
         successful: true,
         verificationCode: unhashedCode,
       });
+
+      let verificationLink;
+      if (source === "mobile") {
+        verificationLink = `exp://localhost:8081/--/verificationSuccess?email=${email}&verificationCode=${unhashedCode}`
+        console.log("VERIFICATION LINK: ", verificationLink)
+      } else {
+        verificationLink = `${process.env.FRONTEND_URL}/signup-verification?email=${email}&verificationCode=${unhashedCode}`
+      }
+      
       if (email) {
         const emailTemplate = `<div>
         <p>Hi ${username.trim()},</p>
         <p>Thank you for signing up to Boomers.</p>
         <p>Click on the link below to verify your account: </p>
-        <p><a href="${process.env.FRONTEND_URL}/signup-verification?email=${email}&verificationCode=${unhashedCode}" target="_blank">Verification link</a></p>
+        <p><a href="${verificationLink}" target="_blank">Verify Account</a></p>
         <p>This link will expire in 24 hours.</p>
         </div>`;
         sendMail(transporter, email, emailTemplate);
@@ -172,6 +181,7 @@ export const verifyUser = asyncHandler(async (req: Request, res: Response) => {
       }
     }
 
+    console.log("VERIFICATION CODE: ", verificationCode)
     const isCorrect = await bcrypt.compare(
       verificationCode.toString(),
       hashedVerificationCode[0].code
