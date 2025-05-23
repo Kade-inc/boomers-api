@@ -320,7 +320,7 @@ export const updateTeam = asyncHandler(
         return;
       }
 
-      const { name, teamUsername, domain, subdomain, subdomainTopics } = req.body;
+      const { name, teamUsername, domain, subdomain, subdomainTopics, teamColor } = req.body;
       
       // Initialize update object with current team values
       const updateData: any = {
@@ -328,7 +328,8 @@ export const updateTeam = asyncHandler(
         teamUsername: team.teamUsername,
         domain: team.domain,
         subdomain: team.subdomain,
-        subdomainTopics: team.subdomainTopics
+        subdomainTopics: team.subdomainTopics,
+        teamColor: team.teamColor
       };
 
       // Update only if new values are provided
@@ -338,6 +339,10 @@ export const updateTeam = asyncHandler(
 
       if (teamUsername && teamUsername.trim().length > 0) {
         updateData.teamUsername = teamUsername.trim();
+      }
+
+      if (teamColor && teamColor.trim().length > 0) {
+        updateData.teamColor = teamColor.trim();
       }
 
       let domainExists: any;
