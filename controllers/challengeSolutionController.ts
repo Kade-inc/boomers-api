@@ -54,7 +54,6 @@ export const postChallengeSolution = asyncHandler(
           const challengeSolution = await ChallengeSolution.create({
             challenge_id: challenge_id,
             user_id: req.user.id,
-            status: 1,
           });
 
           res
