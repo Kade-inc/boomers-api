@@ -68,6 +68,7 @@ export const postChallengeSolution = asyncHandler(
       }
     } catch (error: any) {
       console.log(error);
+      res.status(500).json({ error: error.message });
     }
   }
 );
@@ -131,7 +132,7 @@ export const updateChallengeSolution = asyncHandler(
       }
     } catch (error: any) {
       console.log("ERRROR: ", error);
-      res.status(400).json({ error: error });
+      res.status(500).json({ error: error.message });
     }
   }
 );
@@ -144,11 +145,29 @@ export const getChallengeSolution = asyncHandler(
     try {
       const solutionId = req.params.solutionId;
 
-      const solution = await ChallengeSolution.findById({ _id: solutionId });
+      const solution = await ChallengeSolution.findById({ _id: solutionId })
+        .populate({
+          path: 'challenge_id',
+          model: 'TeamChallenge',
+          select: '-__v'
+        });
 
-      res.status(200).json({ message: "successful", data: solution });
+      if (!solution) {
+        res.status(404).json({ message: "Solution not found" });
+        return;
+      }
+
+      // Transform the response to rename challenge_id to challenge
+      const { challenge_id, ...rest } = solution.toObject();
+      const responseData = {
+        ...rest,
+        challenge: challenge_id
+      };
+
+      res.status(200).json({ message: "successful", data: responseData });
     } catch (error: any) {
-      console.log("ERRROR: ", error);
+      console.log("ERROR: ", error);
+      res.status(500).json({ error: error.message });
     }
   }
 );
@@ -168,6 +187,7 @@ export const getAllChallengeSolutions = asyncHandler(
       res.status(200).json({ message: "successful", data: solutions });
     } catch (error: any) {
       console.log("ERRROR: ", error);
+      res.status(500).json({ error: error.message });
     }
   }
 );
@@ -201,7 +221,7 @@ export const deleteChallengeSolution = asyncHandler(
       }
     } catch (error: any) {
       console.log("ERRROR: ", error);
-      res.status(400).json({ error: error });
+      res.status(500).json({ error: error.message });
     }
   }
 );
@@ -257,7 +277,7 @@ export const postSolutionComment = asyncHandler(
       }
     } catch (error: any) {
       console.log(error);
-      res.status(400).json({ error: error.message });
+      res.status(500).json({ error: error.message });
     }
   }
 );
@@ -322,7 +342,7 @@ export const updateSolutionComment = asyncHandler(
       }
     } catch (error: any) {
       console.log(error);
-      res.status(400).json({ error: error.message });
+      res.status(500).json({ error: error.message });
     }
   }
 );
@@ -348,7 +368,7 @@ export const getSolutionComments = asyncHandler(
       res.status(200).json({ message: "successful", data: solutionComments });
     } catch (error: any) {
       console.log(error);
-      res.status(400).json({ error: error.message });
+      res.status(500).json({ error: error.message });
     }
   }
 );
@@ -376,7 +396,7 @@ export const getSolutionComment = asyncHandler(
       res.status(200).json({ message: "successful", data: solutionComment });
     } catch (error: any) {
       console.log(error);
-      res.status(400).json({ error: error.message });
+      res.status(500).json({ error: error.message });
     }
   }
 );
@@ -416,7 +436,7 @@ export const deleteSolutionComment = asyncHandler(
       res.status(204).json({ message: "successful" });
     } catch (error: any) {
       console.log(error);
-      res.status(400).json({ error: error.message });
+      res.status(500).json({ error: error.message });
     }
   }
 );
@@ -516,7 +536,7 @@ export const postSolutionRating = asyncHandler(
       }
       res.status(201).json({ message: "successful", data: response });
     } catch (error: any) {
-      res.status(400).json({ error: error.message });
+      res.status(500).json({ error: error.message });
     }
   }
 );
@@ -552,7 +572,7 @@ export const getSolutionRatings = asyncHandler(
       res.status(200).json({ message: "successful", data: response });
     } catch (error: any) {
       console.log(error);
-      res.status(400).json({ error: error.message });
+      res.status(500).json({ error: error.message });
     }
   }
 );
@@ -642,7 +662,7 @@ export const updateSolutionRating = asyncHandler(
       res.status(200).json({ message: "successful", data: response });
     } catch (error: any) {
       console.log(error);
-      res.status(400).json({ error: error.message });
+      res.status(500).json({ error: error.message });
     }
   }
 );
@@ -723,7 +743,7 @@ export const deleteSolutionRating = asyncHandler(
 
       res.status(204).json({ message: "successful" });
     } catch (error: any) {
-      res.status(400).json({ error: error.message });
+      res.status(500).json({ error: error.message });
     }
   }
 );
