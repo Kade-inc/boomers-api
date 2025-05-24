@@ -20,7 +20,7 @@ dotenv.config();
 //access public
 const registerUser = asyncHandler(async (req: Request, res: Response) => {
   try {
-    const { phoneNumber, email, password, username, countryCode } = req.body;
+    const { phoneNumber, email, password, username, countryCode, source = 'web' } = req.body;
 
     if (!email && !phoneNumber) {
       res.status(400);
@@ -125,12 +125,21 @@ const registerUser = asyncHandler(async (req: Request, res: Response) => {
         successful: true,
         verificationCode: unhashedCode,
       });
+
+      let verificationLink;
+      if (source === "mobile") {
+        verificationLink = `exp://localhost:8081/--/verificationSuccess?email=${email}&verificationCode=${unhashedCode}`
+        console.log("VERIFICATION LINK: ", verificationLink)
+      } else {
+        verificationLink = `${process.env.FRONTEND_URL}/signup-verification?email=${email}&verificationCode=${unhashedCode}`
+      }
+      
       if (email) {
         const emailTemplate = `<div>
         <p>Hi ${username.trim()},</p>
         <p>Thank you for signing up to Boomers.</p>
         <p>Click on the link below to verify your account: </p>
-        <p><a href="${process.env.FRONTEND_URL}/signup-verification?email=${email}&verificationCode=${unhashedCode}" target="_blank">Verification link</a></p>
+        <p><a href="${verificationLink}" target="_blank">Verify Account</a></p>
         <p>This link will expire in 24 hours.</p>
         </div>`;
         sendMail(transporter, email, emailTemplate);
@@ -172,6 +181,7 @@ export const verifyUser = asyncHandler(async (req: Request, res: Response) => {
       }
     }
 
+    console.log("VERIFICATION CODE: ", verificationCode)
     const isCorrect = await bcrypt.compare(
       verificationCode.toString(),
       hashedVerificationCode[0].code
@@ -413,7 +423,7 @@ export const currentUser = asyncHandler(
 //access public
 
 export const forgotPassword = async (req: Request, res: Response) => {
-  const { email } = req.body;
+  const { email, source = 'web' } = req.body;
   try {
     // Check if the user exists in the database:
     const user = await User.findOne({ email });
@@ -421,53 +431,105 @@ export const forgotPassword = async (req: Request, res: Response) => {
       return res.status(404).json({ message: "User does not exist" });
     }
 
-    // Generate reset token
-    const resetToken = crypto.randomBytes(32).toString("hex");
-    const saltRounds = 10;
+    if (source === 'mobile') {
+      // Generate a 6-digit verification code
+      const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+      const saltRounds = 10;
 
-    // Generate salt and hash the token
-    const salt = await bcrypt.genSalt(saltRounds);
-    const hash = await bcrypt.hash(resetToken, salt);
+      // Generate salt and hash the code
+      const salt = await bcrypt.genSalt(saltRounds);
+      const hash = await bcrypt.hash(verificationCode, salt);
 
-    const userToken = await ResetPasswordToken.findOne({
-      userId: user._id
-    })
+      // Save or update the verification code
+      const userToken = await ResetPasswordToken.findOne({
+        userId: user._id
+      });
 
-    if (userToken) {
-      await ResetPasswordToken.findByIdAndUpdate(
-        userToken._id,
+      if (userToken) {
+        await ResetPasswordToken.findByIdAndUpdate(
+          userToken._id,
+          {
+            token: hash,
+            createdAt: Date.now(),
+          },
+          {
+            new: true,
+          }
+        );
+      } else {
+        await new ResetPasswordToken({
+          userId: user._id,
+          token: hash,
+          createdAt: Date.now(),
+        }).save();
+      }
+
+      // Send email with the verification code
+      const emailTemplate = `
+        <div>
+          <h2>Hi ${user.username}</h2>
+          <p>You requested to reset your password</p>
+          <p>Your verification code is: <strong>${verificationCode}</strong></p>
+          <p>Please use this code to reset your password</p>
+        </div>`;
+
+      sendMail(transporter, email, emailTemplate, "Password Reset Verification Code");
+      
+      return res.status(200).json({
+        message: "Verification code sent successfully",
+        data: {
+          message: "Please check your email for the verification code"
+        }
+      });
+    } else {
+      // Original web flow with reset token
+      const resetToken = crypto.randomBytes(32).toString("hex");
+      const saltRounds = 10;
+
+      // Generate salt and hash the token
+      const salt = await bcrypt.genSalt(saltRounds);
+      const hash = await bcrypt.hash(resetToken, salt);
+
+      const userToken = await ResetPasswordToken.findOne({
+        userId: user._id
+      });
+
+      if (userToken) {
+        await ResetPasswordToken.findByIdAndUpdate(
+          userToken._id,
           {
             token: hash,
           },
           {
             new: true,
           }
-      )
-    } else {
-       // Save token to the database
-   
-      await new ResetPasswordToken({
-        userId: user._id,
-        token: hash,
-        createdAt: Date.now(),
-      }).save();
-    }
-   
+        );
+      } else {
+        await new ResetPasswordToken({
+          userId: user._id,
+          token: hash,
+          createdAt: Date.now(),
+        }).save();
+      }
 
-    // Send email with the reset link
-    const emailTemplate = `
-            <div>
-                <h2>Hi ${user.username}</h2>
-                <p>You requested to reset your password</p>
-                <p>Please click on the below link to reset your password</p>
-                <a href="${process.env.FRONTEND_URL}/reset-password?token=${resetToken}&id=${user._id}" target=_"blank">Reset Password</a>
-            </div>`;
-    // Assuming you have a function sendMail defined somewhere
-    sendMail(transporter, email, emailTemplate, "Forgot Password");
-    res.status(200).json({
-      message: "Reset password email sent successfully",
-      data: `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}&id=${user._id}`,
-    });
+      // Send email with the reset link
+      const emailTemplate = `
+        <div>
+          <h2>Hi ${user.username}</h2>
+          <p>You requested to reset your password</p>
+          <p>Please click on the below link to reset your password</p>
+          <a href="${process.env.FRONTEND_URL}/reset-password?token=${resetToken}&id=${user._id}" target=_"blank">Reset Password</a>
+        </div>`;
+
+      sendMail(transporter, email, emailTemplate, "Forgot Password");
+      
+      return res.status(200).json({
+        message: "Reset password email sent successfully",
+        data: {
+          message: `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}&id=${user._id}`
+        }
+      });
+    }
   } catch (error: any) {
     res.status(400).json({ error: error });
   }
@@ -535,6 +597,54 @@ export const resetPassword = async (req: Request, res: Response) => {
     res.status(200).json({ message: "Password reset successfully" });
   } catch (error) {
     res.status(400).json({ error: error });
+  }
+};
+
+//@desc Verify reset token
+//@route POST /api/users/verify-reset-token
+//access public
+export const verifyResetToken = async (req: Request, res: Response) => {
+  try {
+    const { email, verificationCode } = req.body;
+
+    // Find user by email
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: "User does not exist" });
+    }
+
+    // Find the reset token for this user
+    const resetToken = await ResetPasswordToken.findOne({ userId: user._id });
+    if (!resetToken) {
+      return res.status(404).json({ message: "No reset token found for this user" });
+    }
+
+    // Check if token has expired (24 hours)
+    const tokenAge = Date.now() - resetToken.createdAt.getTime();
+    const twentyFourHours = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+    if (tokenAge > twentyFourHours) {
+      // Delete expired token
+      await ResetPasswordToken.findByIdAndDelete(resetToken._id);
+      return res.status(400).json({ message: "Reset token has expired" });
+    }
+
+    // Verify the code matches
+    const isValidCode = await bcrypt.compare(verificationCode, resetToken.token);
+    if (!isValidCode) {
+      return res.status(400).json({ message: "Invalid verification code" });
+    }
+
+    // If we get here, the token is valid
+    return res.status(200).json({
+      message: "Token is valid",
+      data: {
+        userId: user._id
+      }
+    });
+
+  } catch (error: any) {
+    console.error("Verify reset token error:", error);
+    return res.status(500).json({ message: "Error verifying reset token" });
   }
 };
 

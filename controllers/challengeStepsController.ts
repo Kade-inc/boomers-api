@@ -33,8 +33,8 @@ export const addChallengeStep = asyncHandler(
             _id: solutionId,
           });
 
-          const initialSteps = challengeSolution?.steps;
-
+          // Initialize steps array if it doesn't exist
+          const initialSteps = challengeSolution?.steps || [];
           initialSteps.push(challengeStep);
 
           const completedSteps: any = [];
@@ -60,6 +60,7 @@ export const addChallengeStep = asyncHandler(
       }
     } catch (error: any) {
       console.log("ERRROR: ", error);
+      res.status(500).json({ error: error.message });
     }
   }
 );
@@ -77,6 +78,7 @@ export const getAllChallengeSteps = asyncHandler(
       res.status(200).json({ message: "successful", data: steps });
     } catch (error: any) {
       console.log("ERRROR: ", error);
+      res.status(500).json({ error: error.message });
     }
   }
 );
@@ -153,6 +155,7 @@ export const updateChallengeStep = asyncHandler(
       }
     } catch (error: any) {
       console.log("ERRROR: ", error);
+      res.status(500).json({ error: error.message });
     }
   }
 );
@@ -170,6 +173,7 @@ export const getChallengeStep = asyncHandler(
       res.status(200).json({ message: "successful", data: step });
     } catch (error: any) {
       console.log("ERRROR: ", error);
+      res.status(500).json({ error: error.message });
     }
   }
 );
@@ -233,6 +237,7 @@ export const deleteChallengeStep = asyncHandler(
       }
     } catch (error: any) {
       console.log("ERRROR: ", error);
+      res.status(500).json({ error: error.message });
     }
   }
 );
