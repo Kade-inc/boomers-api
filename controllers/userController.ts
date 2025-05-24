@@ -20,7 +20,7 @@ dotenv.config();
 //access public
 const registerUser = asyncHandler(async (req: Request, res: Response) => {
   try {
-    const { phoneNumber, email, password, username, countryCode, source } = req.body;
+    const { phoneNumber, email, password, username, countryCode, source = 'web' } = req.body;
 
     if (!email && !phoneNumber) {
       res.status(400);
@@ -423,7 +423,7 @@ export const currentUser = asyncHandler(
 //access public
 
 export const forgotPassword = async (req: Request, res: Response) => {
-  const { email, source } = req.body;
+  const { email, source = 'web' } = req.body;
   try {
     // Check if the user exists in the database:
     const user = await User.findOne({ email });
@@ -597,6 +597,54 @@ export const resetPassword = async (req: Request, res: Response) => {
     res.status(200).json({ message: "Password reset successfully" });
   } catch (error) {
     res.status(400).json({ error: error });
+  }
+};
+
+//@desc Verify reset token
+//@route POST /api/users/verify-reset-token
+//access public
+export const verifyResetToken = async (req: Request, res: Response) => {
+  try {
+    const { email, verificationCode } = req.body;
+
+    // Find user by email
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: "User does not exist" });
+    }
+
+    // Find the reset token for this user
+    const resetToken = await ResetPasswordToken.findOne({ userId: user._id });
+    if (!resetToken) {
+      return res.status(404).json({ message: "No reset token found for this user" });
+    }
+
+    // Check if token has expired (24 hours)
+    const tokenAge = Date.now() - resetToken.createdAt.getTime();
+    const twentyFourHours = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+    if (tokenAge > twentyFourHours) {
+      // Delete expired token
+      await ResetPasswordToken.findByIdAndDelete(resetToken._id);
+      return res.status(400).json({ message: "Reset token has expired" });
+    }
+
+    // Verify the code matches
+    const isValidCode = await bcrypt.compare(verificationCode, resetToken.token);
+    if (!isValidCode) {
+      return res.status(400).json({ message: "Invalid verification code" });
+    }
+
+    // If we get here, the token is valid
+    return res.status(200).json({
+      message: "Token is valid",
+      data: {
+        userId: user._id
+      }
+    });
+
+  } catch (error: any) {
+    console.error("Verify reset token error:", error);
+    return res.status(500).json({ message: "Error verifying reset token" });
   }
 };
 

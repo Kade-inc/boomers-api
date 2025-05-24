@@ -6,6 +6,7 @@ import registerUser, {
   getUsers,
   resendVerificationCode,
   resetPassword,
+  verifyResetToken,
   verifyUser,
 } from "../controllers/userController";
 import logInUser, { logout, refreshToken, verifyUserCode } from "../controllers/authController";
@@ -321,6 +322,7 @@ userRouter.post("/forgot-password", forgotPassword);
  */
 userRouter.post("/reset-password", resetPassword);
 
+userRouter.post("/verify-reset-token", verifyResetToken);
 
 userRouter.post("/refresh-token", refreshToken)
 
