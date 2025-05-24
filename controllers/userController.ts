@@ -423,7 +423,7 @@ export const currentUser = asyncHandler(
 //access public
 
 export const forgotPassword = async (req: Request, res: Response) => {
-  const { email } = req.body;
+  const { email, source } = req.body;
   try {
     // Check if the user exists in the database:
     const user = await User.findOne({ email });
@@ -431,53 +431,105 @@ export const forgotPassword = async (req: Request, res: Response) => {
       return res.status(404).json({ message: "User does not exist" });
     }
 
-    // Generate reset token
-    const resetToken = crypto.randomBytes(32).toString("hex");
-    const saltRounds = 10;
+    if (source === 'mobile') {
+      // Generate a 6-digit verification code
+      const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+      const saltRounds = 10;
 
-    // Generate salt and hash the token
-    const salt = await bcrypt.genSalt(saltRounds);
-    const hash = await bcrypt.hash(resetToken, salt);
+      // Generate salt and hash the code
+      const salt = await bcrypt.genSalt(saltRounds);
+      const hash = await bcrypt.hash(verificationCode, salt);
 
-    const userToken = await ResetPasswordToken.findOne({
-      userId: user._id
-    })
+      // Save or update the verification code
+      const userToken = await ResetPasswordToken.findOne({
+        userId: user._id
+      });
 
-    if (userToken) {
-      await ResetPasswordToken.findByIdAndUpdate(
-        userToken._id,
+      if (userToken) {
+        await ResetPasswordToken.findByIdAndUpdate(
+          userToken._id,
+          {
+            token: hash,
+            createdAt: Date.now(),
+          },
+          {
+            new: true,
+          }
+        );
+      } else {
+        await new ResetPasswordToken({
+          userId: user._id,
+          token: hash,
+          createdAt: Date.now(),
+        }).save();
+      }
+
+      // Send email with the verification code
+      const emailTemplate = `
+        <div>
+          <h2>Hi ${user.username}</h2>
+          <p>You requested to reset your password</p>
+          <p>Your verification code is: <strong>${verificationCode}</strong></p>
+          <p>Please use this code to reset your password</p>
+        </div>`;
+
+      sendMail(transporter, email, emailTemplate, "Password Reset Verification Code");
+      
+      return res.status(200).json({
+        message: "Verification code sent successfully",
+        data: {
+          message: "Please check your email for the verification code"
+        }
+      });
+    } else {
+      // Original web flow with reset token
+      const resetToken = crypto.randomBytes(32).toString("hex");
+      const saltRounds = 10;
+
+      // Generate salt and hash the token
+      const salt = await bcrypt.genSalt(saltRounds);
+      const hash = await bcrypt.hash(resetToken, salt);
+
+      const userToken = await ResetPasswordToken.findOne({
+        userId: user._id
+      });
+
+      if (userToken) {
+        await ResetPasswordToken.findByIdAndUpdate(
+          userToken._id,
           {
             token: hash,
           },
           {
             new: true,
           }
-      )
-    } else {
-       // Save token to the database
-   
-      await new ResetPasswordToken({
-        userId: user._id,
-        token: hash,
-        createdAt: Date.now(),
-      }).save();
-    }
-   
+        );
+      } else {
+        await new ResetPasswordToken({
+          userId: user._id,
+          token: hash,
+          createdAt: Date.now(),
+        }).save();
+      }
 
-    // Send email with the reset link
-    const emailTemplate = `
-            <div>
-                <h2>Hi ${user.username}</h2>
-                <p>You requested to reset your password</p>
-                <p>Please click on the below link to reset your password</p>
-                <a href="${process.env.FRONTEND_URL}/reset-password?token=${resetToken}&id=${user._id}" target=_"blank">Reset Password</a>
-            </div>`;
-    // Assuming you have a function sendMail defined somewhere
-    sendMail(transporter, email, emailTemplate, "Forgot Password");
-    res.status(200).json({
-      message: "Reset password email sent successfully",
-      data: `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}&id=${user._id}`,
-    });
+      // Send email with the reset link
+      const emailTemplate = `
+        <div>
+          <h2>Hi ${user.username}</h2>
+          <p>You requested to reset your password</p>
+          <p>Please click on the below link to reset your password</p>
+          <a href="${process.env.FRONTEND_URL}/reset-password?token=${resetToken}&id=${user._id}" target=_"blank">Reset Password</a>
+        </div>`;
+
+      sendMail(transporter, email, emailTemplate, "Forgot Password");
+      
+      return res.status(200).json({
+        message: "Reset password email sent successfully",
+        data: {
+          message: `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}&id=${user._id}`
+        }
+      });
+    }
   } catch (error: any) {
     res.status(400).json({ error: error });
   }
