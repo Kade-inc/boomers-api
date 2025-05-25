@@ -149,6 +149,16 @@ export const getChallengeSolution = asyncHandler(
           path: 'challenge_id',
           model: 'TeamChallenge',
           select: '-__v'
+        })
+        .populate({
+          path: 'user_id',
+          model: 'User',
+          select: 'profile _id',
+          populate: {
+            path: 'profile',
+            model: 'UserProfile',
+            select: 'firstName lastName username'
+          }
         });
 
       if (!solution) {
@@ -156,11 +166,12 @@ export const getChallengeSolution = asyncHandler(
         return;
       }
 
-      // Transform the response to rename challenge_id to challenge
-      const { challenge_id, ...rest } = solution.toObject();
+      // Transform the response to rename challenge_id to challenge and user_id to user
+      const { challenge_id, user_id, ...rest } = solution.toObject();
       const responseData = {
         ...rest,
-        challenge: challenge_id
+        challenge: challenge_id,
+        user: user_id
       };
 
       res.status(200).json({ message: "successful", data: responseData });
