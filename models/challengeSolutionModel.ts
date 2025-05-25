@@ -21,7 +21,6 @@ interface IChallengeSolution {
   status: Number;
   steps: any;
   valid: boolean;
-  comments: any;
   percentageCompleted: Number;
   completedDate: Date;
   demo_url: string;
@@ -60,10 +59,6 @@ const challengeSolutionSchema = new Schema<IChallengeSolution>(
       type: Boolean,
       default: false,
     },
-    comments: {
-      type: [],
-      default: [],
-    },
     percentageCompleted: {
       type: Number,
       required: true,
@@ -92,8 +87,17 @@ const challengeSolutionSchema = new Schema<IChallengeSolution>(
   },
   {
     timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true }
   }
 );
+
+// Virtual field for comments
+challengeSolutionSchema.virtual('comments', {
+  ref: 'SolutionComment',
+  localField: '_id',
+  foreignField: 'solution_id'
+});
 
 const ChallengeSolution = model<IChallengeSolution>(
   "ChallengeSolution",

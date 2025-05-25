@@ -275,12 +275,10 @@ export const postSolutionComment = asyncHandler(
           return;
         }
 
-        const user = await UserProfile.find({ user_id: req.user.id });
-
         const solutionComment = await SolutionComment.create({
           solution_id: req.params.solutionId,
           comment,
-          user: user[0],
+          user: req.user.id,
         });
 
         res.status(201).json({ message: "successful", data: solutionComment });
@@ -335,7 +333,7 @@ export const updateSolutionComment = asyncHandler(
           _id: req.params.commentId,
         });
 
-        if (solutionComment[0]?.user.user_id.toString() !== req.user.id) {
+        if (solutionComment[0]?.user.toString() !== req.user.id) {
           res.status(403).json({ error: "This is not your comment" });
           return;
         }
@@ -373,7 +371,20 @@ export const getSolutionComments = asyncHandler(
         return;
       }
 
-      const solutionComments = await SolutionComment.find({});
+      const solutionComments = await SolutionComment.find({solution_id: req.params.solutionId}).populate({
+        path: 'user',
+        select: '_id',
+        populate: {
+          path: 'profile',
+          select: 'firstName lastName username profile_picture',
+          transform: (doc) => {
+            if (doc.profile_picture) {
+              doc.profile_picture = `${process.env.S3_BUCKET_PREFIX}${doc.profile_picture}`;
+            }
+            return doc;
+          }
+        }
+      });
 
       res.status(200).json({ message: "successful", data: solutionComments });
     } catch (error: any) {
@@ -401,7 +412,26 @@ export const getSolutionComment = asyncHandler(
 
       const solutionComment = await SolutionComment.findOne({
         _id: req.params.commentId,
+        solution_id: req.params.solutionId
+      }).populate({
+        path: 'user',
+        select: '_id',
+        populate: {
+          path: 'profile',
+          select: 'firstName lastName username profile_picture',
+          transform: (doc) => {
+            if (doc.profile_picture) {
+              doc.profile_picture = `${process.env.S3_BUCKET_PREFIX}${doc.profile_picture}`;
+            }
+            return doc;
+          }
+        }
       });
+
+      if (!solutionComment) {
+        res.status(404).json({ message: "Comment not found" });
+        return;
+      }
 
       res.status(200).json({ message: "successful", data: solutionComment });
     } catch (error: any) {
@@ -436,7 +466,7 @@ export const deleteSolutionComment = asyncHandler(
         return;
       }
 
-      if (solutionComment.user.user_id.toString() !== req.user.id) {
+      if (solutionComment.user.toString() !== req.user.id) {
         res.status(403).json({ error: "This is not your comment" });
         return;
       }

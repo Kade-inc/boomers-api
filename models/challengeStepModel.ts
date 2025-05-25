@@ -6,7 +6,6 @@ interface IChallengeStep {
   challenge_id: Schema.Types.ObjectId;
   description: string;
   completed: boolean;
-  comments: any;
 }
 
 const challengeStepSchema = new Schema<IChallengeStep>(
@@ -26,10 +25,6 @@ const challengeStepSchema = new Schema<IChallengeStep>(
       required: true,
       ref: "TeamChallenge",
     },
-    comments: {
-      type: [],
-      default: [],
-    },
     description: {
       type: String,
       required: true,
@@ -42,8 +37,17 @@ const challengeStepSchema = new Schema<IChallengeStep>(
   },
   {
     timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true }
   }
 );
+
+// Virtual field for comments
+challengeStepSchema.virtual('comments', {
+  ref: 'ChallengeStepComment',
+  localField: '_id',
+  foreignField: 'step_id'
+});
 
 const ChallengeStep = model<IChallengeStep>(
   "ChallengeStep",
