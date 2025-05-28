@@ -192,9 +192,34 @@ export const getAllChallengeSolutions = asyncHandler(
 
       const solutions = await ChallengeSolution.find({
         challenge_id: challengeId,
+      }).populate({
+        path: 'user_id',
+        model: 'User',
+        select: 'profile _id',
+        populate: {
+          path: 'profile',
+          model: 'UserProfile',
+          select: 'firstName lastName username profile_picture',
+          transform: (doc) => {
+            if (doc.profile_picture) {
+              doc.profile_picture = `${process.env.S3_BUCKET_PREFIX}${doc.profile_picture}`;
+            }
+            return doc;
+          }
+        },
+       
       });
 
-      res.status(200).json({ message: "successful", data: solutions });
+      // Transform the response to rename user_id to user
+      const transformedSolutions = solutions.map(solution => {
+        const { user_id, ...rest } = solution.toObject();
+        return {
+          ...rest,
+          user: user_id
+        };
+      });
+
+      res.status(200).json({ message: "successful", data: transformedSolutions });
     } catch (error: any) {
       console.log("ERRROR: ", error);
       res.status(500).json({ error: error.message });
