@@ -13,6 +13,7 @@ import {
   getChallengeSolution,
   getSolutionComment,
   getSolutionComments,
+  getSolutionRating,
   getSolutionRatings,
   postChallengeSolution,
   postSolutionComment,
@@ -566,7 +567,7 @@ challengeRouter.get("/:id/solutions/:solutionId/rating", getSolutionRatings);
  *      500:
  *        description: Server Error
  */
-challengeRouter.put(
+challengeRouter.patch(
   "/:id/solutions/:solutionId/rating/:ratingId",
   updateSolutionRating
 );
@@ -716,6 +717,28 @@ challengeRouter.delete(
 challengeRouter.delete(
   "/",
   deleteMultipleChallengesByUser
+);
+
+/**
+ * @openapi
+ * '/api/challenges/:id/solutions/:solutionId/rating/:ratingId':
+ *  get:
+ *     tags:
+ *     - Challenge Solution Controller
+ *     summary: Get solution rating
+ *     responses:
+ *      200:
+ *        description: Success
+ *      400:
+ *        description: Bad Request
+ *      404:
+ *        description: Not Found
+ *      500:
+ *        description: Server Error
+ */
+challengeRouter.get(
+  "/:id/solutions/:solutionId/rating/:ratingId",
+  getSolutionRating
 );
 
 export default challengeRouter;
