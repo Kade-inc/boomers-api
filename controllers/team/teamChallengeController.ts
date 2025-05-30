@@ -106,12 +106,11 @@ export const getAllTeamChallenges = asyncHandler(
         const challenges = await TeamChallenge.find({
           team_id: req.params.id,
         });
+        
 
-        if (!challenges.length) {
-          res.status(404).json({ message: "No challenges for team" });
-        } else {
+   
           res.status(200).json({ message: "successful", data: challenges });
-        }
+        
       }
     } catch (error: any) {
       console.log(error);
