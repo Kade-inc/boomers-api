@@ -238,6 +238,8 @@ export const postChallengeComment = asyncHandler(
         return;
       }
 
+      console.log
+
       const teamMembers = await TeamMember.find({
         team_id: challengeExists[0].team_id,
       });
@@ -266,6 +268,46 @@ export const postChallengeComment = asyncHandler(
           comment,
           user: req.user.id,
         });
+
+
+        const teamMembers = await TeamMember.find({ team_id: challengeExists[0].team_id }).populate({
+          path: "user_id",
+          model: "User",
+          select: "username email profile",
+          populate: {
+            path: "profile",
+            model: "UserProfile",
+            select: "firstName lastName bio profile_picture",
+          },
+        })
+
+        const membersToNotify = teamMembers.filter(
+          (member) => member.user_id._id.toString() !== req.user.id
+        );
+
+        console.log("MEMBERS TO NOTIFY: ", membersToNotify)
+
+        const notificationOwner = teamMembers.find(
+          (member) => member.user_id._id.toString() === req.user.id
+        );
+
+        const username = (notificationOwner?.user_id as any).profile.firstName ? `${(notificationOwner?.user_id as any).profile.firstName} ${(notificationOwner?.user_id as any).profile.lastName}` : (notificationOwner?.user_id as any).profile.username;
+
+        
+        for (const member of membersToNotify) {
+          const notification = await Notification.create({
+            user: member.user_id,
+            message: `${username} has commented on challenge: "${challengeExists[0].challenge_name}".`,
+            reference: challengeComment._id,
+            referenceModel: "ChallengeComment",
+          });
+        
+          const io = req.app.locals.io;
+          // Emit notification only to the specific user's room using the user ID
+          const userId = member.user_id._id ? member.user_id._id.toString() : member.user_id.toString();
+          io.to(userId).emit("pushNotification", notification);
+          console.log("Notification emitted to user room " + userId, notification);
+        }
 
         res.status(201).json({ message: "successful", data: challengeComment });
       }
