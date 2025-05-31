@@ -374,26 +374,75 @@ export const postSolutionComment = asyncHandler(
 
         console.log("populatedSolutionComment", populatedSolutionComment);
         
-        const username = populatedSolutionComment.user.profile.username ? `${populatedSolutionComment.user.profile.firstName} ${populatedSolutionComment.user.profile.lastName}` : populatedSolutionComment.user.profile.username;
+        const username = populatedSolutionComment.user.profile.firstName && populatedSolutionComment.user.profile.lastName ? `${populatedSolutionComment.user.profile.firstName} ${populatedSolutionComment.user.profile.lastName}` : populatedSolutionComment.user.profile.username;
         
         // Get the solution to find its creator
-        const solution = await ChallengeSolution.findById(req.params.solutionId);
+        const solution = await ChallengeSolution.findById(req.params.solutionId)
+          .populate({
+            path: 'user_id',
+            model: 'User',
+            select: 'profile',
+            populate: {
+              path: 'profile',
+              model: 'UserProfile',
+              select: 'firstName lastName username'
+            }
+          });
+
         if (!solution) {
           res.status(404).json({ message: "Solution not found" });
           return;
         }
 
-        const notification = await Notification.create({
-          user: solution.user_id,
-          message: `${username} has commented on your solution for the challenge: "${challengeExists[0].challenge_name}".`,
-          reference: solutionComment._id,
-          referenceModel: "SolutionComment",
-        });
-      
-        const io = req.app.locals.io;
-        // Emit notification only to the solution creator's personal room
-        io.to(solution.user_id.toString()).emit("pushNotification", notification);
-        console.log("Notification emitted to solution creator's room " + solution.user_id.toString(), notification);
+        const solutionCreatorName = (solution.user_id as any).profile.firstName && (solution.user_id as any).profile.lastName 
+          ? `${(solution.user_id as any).profile.firstName} ${(solution.user_id as any).profile.lastName}`
+          : (solution.user_id as any).profile.username;
+
+        // Get all unique users who have commented on this solution
+        const previousComments = await SolutionComment.find({
+          solution_id: req.params.solutionId,
+          user: { $ne: req.user.id } // Exclude current user
+        }).select('user').lean();
+
+        // Create a Set of all users to notify (previous commenters + solution creator)
+        const usersToNotify = new Set([...previousComments].map(comment => comment.user.toString()));
+        
+        // Add solution creator if they're not the one commenting
+        if (solution.user_id.toString() !== req.user.id) {
+          usersToNotify.add(solution.user_id.toString());
+        }
+
+        // Create notifications for all users to notify
+        for (const userId of usersToNotify) {
+          console.log("Processing userId:", userId);
+          console.log("userId type:", typeof userId);
+          console.log("userId length:", userId.length);
+
+          // Validate that userId is a valid 24-character hex string
+          if (!/^[0-9a-fA-F]{24}$/.test(userId)) {
+            console.error("Invalid userId format:", userId);
+            continue;
+          }
+
+          const message = userId === (solution.user_id as any)._id.toString()
+            ? `${username} has commented on your solution for the challenge: "${challengeExists[0].challenge_name}".`
+            : `${username} has also commented on ${solutionCreatorName}'s solution for the challenge: "${challengeExists[0].challenge_name}".`;
+
+          try {
+            const notification = await Notification.create({
+              user: new Types.ObjectId(userId),
+              message,
+              reference: solutionComment._id,
+              referenceModel: "SolutionComment",
+            });
+          
+            const io = req.app.locals.io;
+            io.to(userId).emit("pushNotification", notification);
+            console.log("Notification emitted to user's room " + userId, notification);
+          } catch (error) {
+            console.error("Error creating notification for userId:", userId, error);
+          }
+        }
 
         res.status(201).json({ message: "successful", data: solutionComment });
       }
