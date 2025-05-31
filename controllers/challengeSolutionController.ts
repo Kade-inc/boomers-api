@@ -26,6 +26,18 @@ interface PopulatedChallengeSolution extends Document {
   // ... other fields from ChallengeSolution
 }
 
+interface PopulatedSolutionComment {
+  user: {
+    _id: Types.ObjectId;
+    profile: {
+      firstName: string;
+      lastName: string;
+      username: string;
+    };
+  };
+  // ... other fields
+}
+
 //@desc Post Solution
 //@route POST /api/challenges/:id/solutions
 //access private
@@ -348,6 +360,40 @@ export const postSolutionComment = asyncHandler(
           comment,
           user: req.user.id,
         });
+
+        const populatedSolutionComment = await solutionComment.populate({
+          path: 'user',
+          model: 'User',
+          select: 'profile _id',
+          populate: {
+            path: 'profile',
+            model: 'UserProfile',
+            select: 'firstName lastName username',
+          }
+        }) as PopulatedSolutionComment;
+
+        console.log("populatedSolutionComment", populatedSolutionComment);
+        
+        const username = populatedSolutionComment.user.profile.username ? `${populatedSolutionComment.user.profile.firstName} ${populatedSolutionComment.user.profile.lastName}` : populatedSolutionComment.user.profile.username;
+        
+        // Get the solution to find its creator
+        const solution = await ChallengeSolution.findById(req.params.solutionId);
+        if (!solution) {
+          res.status(404).json({ message: "Solution not found" });
+          return;
+        }
+
+        const notification = await Notification.create({
+          user: solution.user_id,
+          message: `${username} has commented on your solution for the challenge: "${challengeExists[0].challenge_name}".`,
+          reference: solutionComment._id,
+          referenceModel: "SolutionComment",
+        });
+      
+        const io = req.app.locals.io;
+        // Emit notification only to the solution creator's personal room
+        io.to(solution.user_id.toString()).emit("pushNotification", notification);
+        console.log("Notification emitted to solution creator's room " + solution.user_id.toString(), notification);
 
         res.status(201).json({ message: "successful", data: solutionComment });
       }
