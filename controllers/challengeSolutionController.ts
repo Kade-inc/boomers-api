@@ -160,8 +160,10 @@ export const updateChallengeSolution = asyncHandler(
               const notification = await Notification.create({
                 user: challenge.owner_id,
                 message: `${username} has submitted a solution for the challenge: "${challenge.challenge_name}".`,
-                reference: solution._id,
-                referenceModel: "ChallengeSolution",
+                reference: challenge._id,
+                referenceModel: "TeamChallenge",
+                subreference: solutionId,
+                subreferenceModel: "ChallengeSolution",
               });
             
               const io = req.app.locals.io;
@@ -432,7 +434,7 @@ export const postSolutionComment = asyncHandler(
             const notification = await Notification.create({
               user: new Types.ObjectId(userId),
               message,
-              reference: solutionComment._id,
+              reference: challenge_id,
               referenceModel: "SolutionComment",
             });
           

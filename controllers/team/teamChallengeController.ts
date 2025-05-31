@@ -285,20 +285,20 @@ export const postChallengeComment = asyncHandler(
           (member) => member.user_id._id.toString() !== req.user.id
         );
 
-        console.log("MEMBERS TO NOTIFY: ", membersToNotify)
-
         const notificationOwner = teamMembers.find(
           (member) => member.user_id._id.toString() === req.user.id
         );
 
-        const username = (notificationOwner?.user_id as any).profile.firstName ? `${(notificationOwner?.user_id as any).profile.firstName} ${(notificationOwner?.user_id as any).profile.lastName}` : (notificationOwner?.user_id as any).profile.username;
+        const username = (notificationOwner?.user_id as any).profile.firstName && (notificationOwner?.user_id as any).profile.lastName ? `${(notificationOwner?.user_id as any).profile.firstName} ${(notificationOwner?.user_id as any).profile.lastName}` : (notificationOwner?.user_id as any).profile.username;
+
+        console.log("USERNAME: ", username)
 
         
         for (const member of membersToNotify) {
           const notification = await Notification.create({
             user: member.user_id,
             message: `${username} has commented on challenge: "${challengeExists[0].challenge_name}".`,
-            reference: challengeComment._id,
+            reference: challenge_id,
             referenceModel: "ChallengeComment",
           });
         
