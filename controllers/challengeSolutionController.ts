@@ -153,9 +153,9 @@ export const updateChallengeSolution = asyncHandler(
               });
             
               const io = req.app.locals.io;
-              // Emit notification only to the individual user's room.
-              io.to(challenge._id.toString()).emit("pushNotification", notification);
-              console.log("Notification emitted to user room " + challenge._id.toString(), notification);
+              // Emit notification only to the challenge owner's personal room
+              io.to(challenge.owner_id.toString()).emit("pushNotification", notification);
+              console.log("Notification emitted to challenge owner's room " + challenge.owner_id.toString(), notification);
             
   
         }
