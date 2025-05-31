@@ -38,6 +38,18 @@ interface PopulatedSolutionComment {
   // ... other fields
 }
 
+interface PopulatedRatingResponse extends Document {
+  user_id: {
+    _id: Types.ObjectId;
+    profile: {
+      firstName: string;
+      lastName: string;
+      username: string;
+    };
+  };
+  // ... other fields
+}
+
 //@desc Post Solution
 //@route POST /api/challenges/:id/solutions
 //access private
@@ -710,6 +722,15 @@ export const postSolutionRating = asyncHandler(
         user_id: req.user.id,
       });
 
+      const populatedRatingResponse = await response.populate({
+        path: 'user_id',
+        select: 'profile',
+        populate: {
+          path: 'profile',
+          select: 'firstName lastName username'
+        }
+      }) as PopulatedRatingResponse;
+
       if (challenge.owner_id.toString() === req.user.id) {
         await ChallengeSolution.findByIdAndUpdate(
           req.params.solutionId,
@@ -739,6 +760,22 @@ export const postSolutionRating = asyncHandler(
           }
         );
       }
+
+      const username = populatedRatingResponse.user_id.profile.firstName && populatedRatingResponse.user_id.profile.lastName ? `${populatedRatingResponse.user_id.profile.firstName} ${populatedRatingResponse.user_id.profile.lastName}` : populatedRatingResponse.user_id.profile.username;
+      const notification = await Notification.create({
+        user: req.user.id,
+        message: `${username} has given a rating for your solution for the challenge: "${challenge.challenge_name}".`,
+        reference: challenge._id,
+        referenceModel: "TeamChallenge",
+        subreference: req.params.solutionId,
+        subreferenceModel: "SolutionRating",
+      });
+    
+      const io = req.app.locals.io;
+      // Emit notification only to the challenge owner's personal room
+      io.to(solution.user_id.toString()).emit("pushNotification", notification);
+      console.log("Notification emitted to user's room " + solution.user_id.toString(), notification);
+
       res.status(201).json({ message: "successful", data: response });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
