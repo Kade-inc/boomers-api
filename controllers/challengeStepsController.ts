@@ -8,6 +8,20 @@ import TeamMember from "../models/teamMemberModel";
 import UserProfile from "../models/userProfileModel";
 import SolutionComment from "../models/solutionCommentModel";
 import ChallengeStepComment from "../models/challengeStepCommentModel";
+import Notification from "../models/notificationModel";
+import { Types } from "mongoose";
+
+interface PopulatedStepComment {
+  user: {
+    _id: Types.ObjectId;
+    profile: {
+      firstName: string;
+      lastName: string;
+      username: string;
+    };
+  };
+  // ... other fields
+}
 
 //@desc POST Step
 //@route POST /api/challenges/:id/solutions/:solutionId/steps
@@ -290,6 +304,93 @@ export const postSolutionStepComment = asyncHandler(
           comment,
           user: req.user.id
         });
+
+        // Get the populated comment with user info
+        const populatedStepComment = await solutionStepComment.populate({
+          path: 'user',
+          model: 'User',
+          select: 'profile _id',
+          populate: {
+            path: 'profile',
+            model: 'UserProfile',
+            select: 'firstName lastName username',
+          }
+        }) as PopulatedStepComment;
+
+        const username = populatedStepComment.user.profile.firstName && populatedStepComment.user.profile.lastName 
+          ? `${populatedStepComment.user.profile.firstName} ${populatedStepComment.user.profile.lastName}`
+          : populatedStepComment.user.profile.username;
+
+        // Get the step to find its solution
+        const step = await ChallengeStep.findById(req.params.stepId)
+          .populate({
+            path: 'solution_id',
+            model: 'ChallengeSolution',
+            select: 'user_id',
+            populate: {
+              path: 'user_id',
+              model: 'User',
+              select: 'profile',
+              populate: {
+                path: 'profile',
+                model: 'UserProfile',
+                select: 'firstName lastName username'
+              }
+            }
+          });
+
+        if (!step) {
+          res.status(404).json({ message: "Step not found" });
+          return;
+        }
+
+        const solutionCreatorName = (step.solution_id as any).user_id.profile.firstName && (step.solution_id as any).user_id.profile.lastName
+          ? `${(step.solution_id as any).user_id.profile.firstName} ${(step.solution_id as any).user_id.profile.lastName}`
+          : (step.solution_id as any).user_id.profile.username;
+
+        // Get all unique users who have commented on this step
+        const previousComments = await ChallengeStepComment.find({
+          step_id: req.params.stepId,
+          user: { $ne: req.user.id } // Exclude current user
+        }).select('user').lean();
+
+        // Create a Set of all users to notify (previous commenters + solution creator)
+        const usersToNotify = new Set([...previousComments].map(comment => comment.user.toString()));
+        
+        // Add solution creator if they're not the one commenting
+        if ((step.solution_id as any).user_id._id.toString() !== req.user.id) {
+          usersToNotify.add((step.solution_id as any).user_id._id.toString());
+        }
+
+        // Create notifications for all users to notify
+        for (const userId of usersToNotify) {
+          // Validate that userId is a valid 24-character hex string
+          if (!/^[0-9a-fA-F]{24}$/.test(userId)) {
+            console.error("Invalid userId format:", userId);
+            continue;
+          }
+
+          const message = userId === (step.solution_id as any).user_id._id.toString()
+            ? `${username} has commented on your solution step for the challenge: "${challengeExists[0].challenge_name}".`
+            : `${username} has also commented on ${solutionCreatorName}'s solution step for the challenge: "${challengeExists[0].challenge_name}".`;
+
+          try {
+            const notification = await Notification.create({
+              user: new Types.ObjectId(userId),
+              message,
+              reference: challenge_id,
+              referenceModel: "TeamChallenge",
+              subreference: step.solution_id,
+              subreferenceModel: "ChallengeStep",
+            });
+          
+            const io = req.app.locals.io;
+            io.to(userId).emit("pushNotification", notification);
+            console.log("Notification emitted to user's room " + userId, notification);
+          } catch (error) {
+            console.error("Error creating notification for userId:", userId, error);
+          }
+        }
 
         res.status(201).json({ message: "successful", data: solutionStepComment });
       }
