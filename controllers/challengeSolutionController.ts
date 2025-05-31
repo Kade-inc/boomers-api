@@ -9,6 +9,22 @@ import ChallengeStep from "../models/challengeStepModel";
 import UserProfile from "../models/userProfileModel";
 import SolutionComment from "../models/solutionCommentModel";
 import SolutionRating from "../models/solutionRatingModel";
+import Notification from "../models/notificationModel";
+import { Types, Document } from "mongoose";
+
+interface PopulatedUser {
+  _id: Types.ObjectId;
+  profile: {
+    firstName: string;
+    lastName: string;
+    username: string;
+  };
+}
+
+interface PopulatedChallengeSolution extends Document {
+  user_id: PopulatedUser;
+  // ... other fields from ChallengeSolution
+}
 
 //@desc Post Solution
 //@route POST /api/challenges/:id/solutions
@@ -79,20 +95,31 @@ export const updateChallengeSolution = asyncHandler(
   async (req: CustomRequest, res: Response) => {
     try {
       const solutionId = req.params.solutionId;
-      const solution = await ChallengeSolution.findById({ _id: solutionId });
+      const initialChallengeSolution = await ChallengeSolution.findById({ _id: solutionId }).populate({
+        path: 'user_id',
+        model: 'User',
+        select: 'profile',
+        populate: {
+          path: 'profile',
+          model: 'UserProfile',
+          select: 'firstName lastName username'
+        }
+      }).lean();
+    
 
       const challenge = await TeamChallenge.findById({
         _id: req.params.id,
       });
 
-      if (!solution || !challenge) {
+      if (!initialChallengeSolution || !challenge) {
         res.status(404).json({ error: "Solution does not exist" });
         return;
       }
-      if (req.user.id !== solution?.user_id.toString()) {
+      if (req.user.id !== (initialChallengeSolution?.user_id as any)._id.toString()) {
         res.status(403).json({ error: "Solution does not belong to you" });
         return;
       } else {
+
         const { status, demo_url, solution } = req.body;
         let completedDate;
 
@@ -115,6 +142,22 @@ export const updateChallengeSolution = asyncHandler(
             return;
           }
           completedDate = new Date();
+  
+            const username = (initialChallengeSolution.user_id as any).profile.firstName ? `${(initialChallengeSolution.user_id as any).profile.firstName} ${(initialChallengeSolution.user_id as any).profile.lastName}` : (initialChallengeSolution.user_id as any).profile.username;
+        
+              const notification = await Notification.create({
+                user: challenge.owner_id,
+                message: `${username} has submitted a solution for the challenge: "${challenge.challenge_name}".`,
+                reference: solution._id,
+                referenceModel: "ChallengeSolution",
+              });
+            
+              const io = req.app.locals.io;
+              // Emit notification only to the individual user's room.
+              io.to(challenge._id.toString()).emit("pushNotification", notification);
+              console.log("Notification emitted to user room " + challenge._id.toString(), notification);
+            
+  
         }
 
         const updatedSolution = await ChallengeSolution.findByIdAndUpdate(

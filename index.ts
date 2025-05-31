@@ -79,7 +79,10 @@ io.on("connection", (socket) => {
     console.log(`Socket ${socket.id} joined room team_${teamId}`);
   });
 
-
+  socket.on("joinChallenge", ({ challengeId }) => {
+    socket.join(challengeId);
+    console.log(`Socket ${socket.id} joined room challenge_${challengeId}`);
+  });
 
   socket.on("disconnect", () => {
     console.log(`Socket disconnected: ${socket.id}`);
