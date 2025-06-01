@@ -7,6 +7,17 @@ import { CustomRequest } from "../../middleware/validateTokenHandler";
 import TeamMember from "../../models/teamMemberModel";
 import TeamMemberRequest from "../../models/teamMemberRequestModel";
 import UserProfile from "../../models/userProfileModel";
+import { Types, Document } from "mongoose";
+import Notification from "../../models/notificationModel";
+
+interface PopulatedUser extends Document {
+  _id: Types.ObjectId;
+  profile: {
+    firstName: string;
+    lastName: string;
+    username: string;
+  };
+}
 
 //@desc Create team
 //@route POST /api/team-member/create
@@ -154,6 +165,31 @@ export const joinTeam = asyncHandler(
         user_id: req.user.id,
         team_id: teamExists._id,
       });
+
+      const populatedUser = await User.findById({ _id: req.user.id }).populate({
+        path: 'profile',
+        select: 'firstName lastName username'
+      }) as PopulatedUser | null;
+
+      if (!populatedUser) {
+        res.status(404);
+        throw new Error("User not found");
+      }
+
+      const username = populatedUser.profile.firstName && populatedUser.profile.lastName ? `${populatedUser.profile.firstName} ${populatedUser.profile.lastName}` : populatedUser.profile.username;
+      // Create notification for team owner
+      const notification = await Notification.create({
+        user: teamExists.owner_id,
+        message: `${username} has requested to join your team "${teamExists.name}".`,
+        reference: teamExists._id,
+        referenceModel: "Team",
+        subreference: teamMemberRequest._id,
+        subreferenceModel: "TeamMemberRequest",
+      });
+
+      const io = req.app.locals.io;
+      io.to(teamExists.owner_id.toString()).emit("pushNotification", notification);
+      console.log("Notification emitted to team owner's room " + teamExists.owner_id.toString(), notification);
 
       const emailTemplate = `<div>
         <p>Hi ${owner?.username},</p>
