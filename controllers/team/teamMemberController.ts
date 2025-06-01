@@ -180,7 +180,7 @@ export const joinTeam = asyncHandler(
       // Create notification for team owner
       const notification = await Notification.create({
         user: teamExists.owner_id,
-        message: `${username} has requested to join your team "${teamExists.name}".`,
+        message: `${username} has requested to join "${teamExists.name}".`,
         reference: teamExists._id,
         referenceModel: "Team",
         subreference: teamMemberRequest._id,
@@ -226,6 +226,20 @@ export const updateJoinRequest = asyncHandler(
         throw new Error("You do not have permission to approve this request");
       }
 
+      const userExists = await User.findOne({
+        _id: { $in: [memberRequest.user_id] },
+      });
+
+      if (!userExists) {
+        res.status(400);
+        throw new Error("User does not exist.");
+      }
+
+      if (!userExists.isVerified) {
+        res.status(400);
+        throw new Error("User is not verified.");
+      }
+
       const { status, comment } = req.body;
 
       if (!status.trim()) {
@@ -261,27 +275,29 @@ export const updateJoinRequest = asyncHandler(
         }
       );
 
-      const teamMember = await TeamMember.create({
-        owner_id: req.user.id,
-        team_id: memberRequest.team_id,
-        user_id: memberRequest.user_id,
-      });
+      if (status.trim().toLowerCase() === "approved") {
+        await TeamMember.create({
+          owner_id: req.user.id,
+          team_id: memberRequest.team_id,
+          user_id: memberRequest.user_id,
+        });
+      }
 
       const teamName = await Team.findById({ _id: memberRequest.team_id})
 
-      const userExists = await User.findOne({
-        _id: { $in: [memberRequest.user_id] },
+      const notification = await Notification.create({
+        user: memberRequest.user_id,
+        message: `Your request to join ${teamName?.name} has been ${status.toLowerCase()}.`,
+        reference: memberRequest.team_id,
+        referenceModel: "Team",
+        subreference: memberRequest._id,
+        subreferenceModel: "TeamMemberRequest",
       });
 
-      if (!userExists) {
-        res.status(400);
-        throw new Error("User does not exist.");
-      }
+      const io = req.app.locals.io;
+      io.to(memberRequest.user_id.toString()).emit("pushNotification", notification);
+      console.log("Notification emitted to user's room " + memberRequest.user_id.toString(), notification);
 
-      if (!userExists.isVerified) {
-        res.status(400);
-        throw new Error("User is not verified.");
-      }
 
       const emailTemplate = `<div>
           <p>Hi,</p>
