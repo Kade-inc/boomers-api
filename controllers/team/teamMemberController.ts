@@ -350,10 +350,30 @@ export const deleteTeamMember = asyncHandler(
         return
       }
       await TeamMember.findByIdAndDelete(teamMember?._id);
+
+      const teamName = await Team.findById({ _id: teamMember.team_id})
+
+      const notification = await Notification.create({
+        user: teamMember.user_id,
+        message: `You have been removed from "${teamName?.name}".`,
+        reference: teamMember.team_id,
+        referenceModel: "Team",
+        subreference: teamMember._id,
+        subreferenceModel: "RemoveTeamMember",
+      });
+
+      const io = req.app.locals.io;
+      io.to(teamMember.user_id.toString()).emit("pushNotification", notification);
+      console.log("Notification emitted to user's room " + teamMember.user_id.toString(), notification);
+
+
       res.status(204).json({
         message: "Team member removed successfully"
       });
-    } catch (error) {}
+    } catch (error: any) {
+      res.status(500)
+      throw new Error(error);
+    }
   }
 );
 
