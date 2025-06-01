@@ -89,6 +89,19 @@ export const addTeamMember = asyncHandler(
         user_id: userExists._id,
       });
 
+      // Create notification for added user
+      const notification = await Notification.create({
+        user: userExists._id,
+        message: `You have been added to "${teamExists.name}".`,
+        reference: teamExists._id,
+        referenceModel: "Team",
+      });
+
+      const io = req.app.locals.io;
+      io.to(userExists._id.toString()).emit("pushNotification", notification);
+      console.log("Notification emitted to user's room " + userExists._id.toString(), notification);
+
+
       res.status(201).json({ message: "successful", data: teamMember });
     } catch (error: any) {
       throw new Error(error);
