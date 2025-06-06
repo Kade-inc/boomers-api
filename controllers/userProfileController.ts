@@ -71,7 +71,7 @@ export const updateUserProfile = asyncHandler(async (req: any, res) => {
       res.status(403).json({ error: "You do not own this profile!" });
       return;
     }
-    const { phoneNumber, firstName, lastName, bio, interests, gender, job, location } =
+    const { phoneNumber, firstName, lastName, bio, interests, gender, job, location, city, country, latitude, longitude } =
       req.body;
     let updateProfileBody = {
       phoneNumber: profile.phoneNumber,
@@ -81,7 +81,12 @@ export const updateUserProfile = asyncHandler(async (req: any, res) => {
       interests: profile.interests,
       gender: profile.gender,
       job: profile.job,
-      location: profile.location
+      location: profile.location,
+      city: profile.city,
+      country: profile.country,
+      latitude: profile.latitude,
+      longitude: profile.longitude,
+      locationGeo: {}
     };
 
     // if (username && username.trim().length > 0)
@@ -107,33 +112,11 @@ export const updateUserProfile = asyncHandler(async (req: any, res) => {
       if (location && location.trim().length > 0)
         updateProfileBody.location = location.trim();
 
+      if (city && city.trim().length > 0)
+        updateProfileBody.city = city.trim();
 
-    //   When updating interests
-    //   {
-    //     "interests": {
-    //         "domain": [
-    //             "Software Engineering"
-    //         ],
-    //         "subdomain": [
-    //             "Frontend"
-    //         ],
-    //         "domainTopics": [
-    //             "React Js"
-    //         ]
-    //     }
-    // }
-
-    // if (
-    //   !interests &&
-    //   !phoneNumber &&
-    //   !firstName &&
-    //   !lastName &&
-    //   !bio &&
-    //   !gender
-    // ) {
-    //   res.status(400);
-    //   throw new Error("Please put a valid value");
-    // }
+      if (country && country.trim().length > 0)
+        updateProfileBody.country = country.trim();
 
     if (gender && gender.trim().length > 0) {
       const genderLower = gender.toLowerCase();
@@ -149,6 +132,16 @@ export const updateUserProfile = asyncHandler(async (req: any, res) => {
         res.status(400);
         throw new Error("Please put a valid gender");
       }
+    }
+
+    if (
+      typeof latitude === "number" &&
+      typeof longitude === "number"
+    ) {
+      updateProfileBody.locationGeo = {
+        type: "Point",
+        coordinates: [longitude, latitude], // always [lng, lat]
+      };
     }
 
     if (req.file) {
@@ -167,7 +160,7 @@ export const updateUserProfile = asyncHandler(async (req: any, res) => {
 
       const command = new PutObjectCommand(params);
 
-      const updatedImage = await s3.send(command);
+      await s3.send(command);
 
       await UserProfile.findByIdAndUpdate(
         profile._id,

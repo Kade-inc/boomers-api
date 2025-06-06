@@ -13,7 +13,16 @@ interface IUserProfile {
   gender: string;
   profile_picture: string | null;
   job: string;
-  location: string;
+  location?: string;
+  city?: string;
+  country?: string;
+  // Optional GeoJSON point for latitude/longitude:
+  latitude?: number;
+  longitude?: number;
+  locationGeo?: {
+    type: "Point";
+    coordinates: [number, number]; // [longitude, latitude]
+  };
 }
 
 const userProfileSchema = new Schema<IUserProfile>(
@@ -66,7 +75,37 @@ const userProfileSchema = new Schema<IUserProfile>(
     location: {
       type: String,
       default: null
-    }
+    },
+    city: {
+      type: String,
+      default: null,
+      trim: true,
+    },
+    country: {
+      type: String,
+      default: null,
+      trim: true,
+    },
+    latitude: {
+      type: Number,
+      default: null,
+    },
+    longitude: {
+      type: Number,
+      default: null,
+    },
+    locationGeo: {
+      type: {
+        type: String,
+        enum: ["Point"],
+        default: "Point",
+      },
+      // [longitude, latitude]
+      coordinates: {
+        type: [Number],
+        default: null,
+      },
+    },
   },
   {
     timestamps: true,
@@ -74,6 +113,9 @@ const userProfileSchema = new Schema<IUserProfile>(
 );
 
 userProfileSchema.index({ firstName: "text", lastName: "text", username: "text", });
+
+// 2dsphere index on locationGeo for geospatial queries:
+userProfileSchema.index({ locationGeo: "2dsphere" });
 
 const UserProfile = model<IUserProfile>("UserProfile", userProfileSchema);
 
