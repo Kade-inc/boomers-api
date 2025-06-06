@@ -183,7 +183,12 @@ export const updateUserProfile = asyncHandler(async (req: any, res) => {
           gender: updateProfileBody.gender,
           profile_picture: imageKey,
           job: updateProfileBody.job,
-          location: updateProfileBody.location
+          location: updateProfileBody.location,
+          city: updateProfileBody.city,
+          country: updateProfileBody.country,
+          latitude: updateProfileBody.latitude,
+          longitude: updateProfileBody.longitude,
+          locationGeo: updateProfileBody.locationGeo
         },
         {
           new: true,
@@ -208,7 +213,12 @@ export const updateUserProfile = asyncHandler(async (req: any, res) => {
         interests: JSON.parse(updateProfileBody.interests),
         gender: updateProfileBody.gender,
         job: updateProfileBody.job,
-        location: updateProfileBody.location
+        location: updateProfileBody.location,
+        city: updateProfileBody.city,
+        country: updateProfileBody.country,
+        latitude: updateProfileBody.latitude,
+        longitude: updateProfileBody.longitude,
+        locationGeo: updateProfileBody.locationGeo
       },
       {
         new: true,
