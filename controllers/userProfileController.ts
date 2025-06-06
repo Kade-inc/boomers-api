@@ -134,6 +134,21 @@ export const updateUserProfile = asyncHandler(async (req: any, res) => {
       }
     }
 
+        //   When updating interests
+    //   {
+    //     "interests": {
+    //         "domain": [
+    //             "Software Engineering"
+    //         ],
+    //         "subdomain": [
+    //             "Frontend"
+    //         ],
+    //         "domainTopics": [
+    //             "React Js"
+    //         ]
+    //     }
+    // }
+
     if (
       typeof latitude === "number" &&
       typeof longitude === "number"
