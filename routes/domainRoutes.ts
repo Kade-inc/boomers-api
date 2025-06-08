@@ -2,7 +2,7 @@ import express from "express";
 
 import validateToken from "../middleware/validateTokenHandler";
 
-import { getAllDomains, getAllSubDomains, getDomainTopics, addDomain, addSubDomain, addDomainTopic, getDomain, getSubDomain, getDomainTopic, updateDomain, updateSubDomain, updateDomainTopic, deleteDomain, deleteSubDomain, deleteDomainTopic } from "../controllers/domainController";
+import { getAllDomains, getAllSubDomains, getDomainTopics, addDomain, addSubDomain, addDomainTopic, getDomain, getSubDomain, getDomainTopic, updateDomain, updateSubDomain, updateDomainTopic, deleteDomain, deleteSubDomain, deleteDomainTopic, getAllSubDomainsList } from "../controllers/domainController";
 
 const domainRouter = express.Router();
 domainRouter.use(validateToken);
@@ -15,6 +15,7 @@ domainRouter.put("/domainTopics/:id", updateDomainTopic);
 domainRouter.delete("/domainTopics/:id", deleteDomainTopic);
 
 // Subdomains routes
+domainRouter.get("/subdomains", getAllSubDomainsList);
 domainRouter.get("/subdomains/:id", getSubDomain);
 domainRouter.put("/subdomains/:id", updateSubDomain);
 domainRouter.delete("/subdomains/:id", deleteSubDomain);
