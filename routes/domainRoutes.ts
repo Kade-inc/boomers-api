@@ -7,20 +7,26 @@ import { getAllDomains, getAllSubDomains, getDomainTopics, addDomain, addSubDoma
 const domainRouter = express.Router();
 domainRouter.use(validateToken);
 
-domainRouter.get("/", getAllDomains);
-domainRouter.get("/:id", getDomain);
-domainRouter.put("/:id", updateDomain);
-domainRouter.delete("/:id", deleteDomain);
+// Domain Topics routes (specific routes first)
+domainRouter.get("/domainTopics", getDomainTopics);
+domainRouter.get("/domainTopics/:id", getDomainTopic);
+domainRouter.post("/domainTopics", addDomainTopic);
+domainRouter.put("/domainTopics/:id", updateDomainTopic);
+domainRouter.delete("/domainTopics/:id", deleteDomainTopic);
 
-domainRouter.get("/:id/subdomains", getAllSubDomains);
+// Subdomains routes
 domainRouter.get("/subdomains/:id", getSubDomain);
 domainRouter.put("/subdomains/:id", updateSubDomain);
 domainRouter.delete("/subdomains/:id", deleteSubDomain);
 
-domainRouter.get("/domainTopics", getDomainTopics);
-domainRouter.get("/domainTopics/:id", getDomainTopic);
-domainRouter.put("/domainTopics/:id", updateDomainTopic);
-domainRouter.delete("/domainTopics/:id", deleteDomainTopic);
+// Domain routes (dynamic routes last)
+domainRouter.get("/", getAllDomains);
+domainRouter.get("/:id", getDomain);
+domainRouter.get("/:id/subdomains", getAllSubDomains);
+domainRouter.post("/", addDomain);
+domainRouter.post("/:id/subdomain", addSubDomain);
+domainRouter.put("/:id", updateDomain);
+domainRouter.delete("/:id", deleteDomain);
 
 /**
  * @openapi
