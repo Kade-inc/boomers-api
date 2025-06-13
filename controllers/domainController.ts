@@ -47,6 +47,23 @@ export const getAllSubDomains = asyncHandler(
     }
   );
 
+//@desc Get All Subdomains
+//@route GET /api/subdomains
+//access private
+export const getAllSubDomainsList = asyncHandler(
+  async (req: CustomRequest, res: Response) => {
+    try {
+      const subdomains = await TeamSubDomain.find({})
+        .populate('parentDomain', 'name commonName');
+      
+      res.status(200).json({ message: "successful", data: subdomains });
+    } catch (error: any) {
+      res.status(400);
+      throw new Error(error);
+    }
+  }
+);
+
 
 //@desc Get Domains
 //@route GET /api/domainTopics
@@ -452,19 +469,3 @@ export const deleteDomainTopic = asyncHandler(
   }
 );
 
-//@desc Get All Subdomains
-//@route GET /api/subdomains
-//access private
-export const getAllSubDomainsList = asyncHandler(
-  async (req: CustomRequest, res: Response) => {
-    try {
-      const subdomains = await TeamSubDomain.find({})
-        .populate('parentDomain', 'name commonName');
-      
-      res.status(200).json({ message: "successful", data: subdomains });
-    } catch (error: any) {
-      res.status(400);
-      throw new Error(error);
-    }
-  }
-);
