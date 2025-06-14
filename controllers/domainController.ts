@@ -54,7 +54,13 @@ export const getAllSubDomainsList = asyncHandler(
   async (req: CustomRequest, res: Response) => {
     try {
       const subdomains = await TeamSubDomain.find({})
-        .populate('parentDomain', 'name commonName');
+        .populate({
+          path: 'parentDomain',
+          select: '_id name commonName',
+          model: 'TeamDomain'
+        });
+
+      console.log("SUBDOMAINS: ", subdomains);
       
       res.status(200).json({ message: "successful", data: subdomains });
     } catch (error: any) {
@@ -73,6 +79,12 @@ export const getDomainTopics = asyncHandler(
       try {
         
         const domainTopics = await DomainTopic.find({})
+        .populate({
+          path: 'parentSubdomain',
+          select: '_id name commonName',
+          model: 'TeamSubDomain'
+        });
+
         res.status(200).json({ message: "successful", data: domainTopics });
       
       } catch (error: any) {

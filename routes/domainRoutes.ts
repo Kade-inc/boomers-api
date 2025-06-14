@@ -26,7 +26,7 @@ domainRouter.get("/", getAllDomains);
 domainRouter.get("/:id", getDomain);
 domainRouter.get("/:id/subdomains", getAllSubDomains);
 domainRouter.post("/", validateSuperAdmin, addDomain);
-domainRouter.post("/:id/subdomain", validateSuperAdmin, addSubDomain);
+domainRouter.post("/:id/subdomains", validateSuperAdmin, addSubDomain);
 domainRouter.put("/:id", validateSuperAdmin, updateDomain);
 domainRouter.delete("/:id", validateSuperAdmin, deleteDomain);
 
