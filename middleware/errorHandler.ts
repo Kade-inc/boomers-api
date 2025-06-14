@@ -3,13 +3,12 @@ import { constants } from "../constants";
 import winston from "winston";
 import "winston-daily-rotate-file";
 
+const { combine, timestamp, json } = winston.format;
+
 // Configure Winston logger
 const logger = winston.createLogger({
   level: "error",
-  format: winston.format.combine(
-    winston.format.timestamp(),
-    winston.format.json()
-  ),
+  format: combine(timestamp(), json()),
   transports: [
     // Daily rotate file transport
     new winston.transports.DailyRotateFile({
@@ -18,10 +17,7 @@ const logger = winston.createLogger({
       maxSize: "20m", // Rotate when file reaches 20MB
       maxFiles: "30d", // Keep logs for 30 days
       zippedArchive: true, // Compress rotated files
-      format: winston.format.combine(
-        winston.format.timestamp(),
-        winston.format.json()
-      ),
+      format: combine(timestamp(), json()),
     }),
     // Console transport for development
     new winston.transports.Console({
