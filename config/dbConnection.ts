@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
-
 import dotenv from "dotenv";
+import "../models"; // Import all models to ensure they are registered
 
 dotenv.config();
 

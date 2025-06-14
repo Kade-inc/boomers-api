@@ -9,6 +9,7 @@ export const signAccessToken = (user:any) => {
         user: {
           email: user.email,
           id: user.id,
+          role: user.role?.name || 'user'
         },
       },
       process.env.ACCESS_TOKEN_SECRET!,
@@ -23,9 +24,9 @@ export const signRefreshToken = (user:any) => {
     return jwt.sign(
       {
         user: {
-          phoneNumber: user.phoneNumber,
           email: user.email,
           id: user.id,
+          role: user.role?.name || 'user'
         },
       },
       process.env.REFRESH_TOKEN_SECRET!,

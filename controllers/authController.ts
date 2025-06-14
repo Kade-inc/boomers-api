@@ -1,12 +1,10 @@
 import { Request, Response } from "express";
 import bcrypt from "bcrypt";
 import asyncHandler from "express-async-handler";
-import User from "../models/userModel";
-import UserLoginCode from "../models/userLoginCodeModel";
+import { User, UserLoginCode, Role, Blacklist } from "../models";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from "../helpers/jwtHelper";
-import Blacklist from "../models/blacklistModel";
 
 dotenv.config();
 //@desc Sign in a user
@@ -27,7 +25,7 @@ const logInUser = asyncHandler(async (req: Request, res: Response) => {
         { username: accountId.trim() },
         { email: accountId.trim() },
       ],
-    });
+    }).populate('role');
 
     if (!user.length) {
       res.status(401);
@@ -92,7 +90,16 @@ const logInUser = asyncHandler(async (req: Request, res: Response) => {
       // };
    
       // res.cookie("token", accessToken, options); 
-      res.status(200).json({ message: "Log in successful", accessToken, refreshToken });
+      res.status(200).json({ 
+        message: "Log in successful", 
+        accessToken, 
+        refreshToken,
+        user: {
+          id: user[0]._id,
+          email: user[0].email,
+          role: user[0].role ? (user[0].role as any).name : 'user'
+        }
+      });
 
     
   } catch (error: any) {
@@ -123,7 +130,7 @@ export const verifyUserCode = asyncHandler(
           { username: accountId.trim() },
           { email: accountId.trim() },
         ],
-      });
+      }).populate('role');
       if (!user.length) {
         res.status(404);
         throw new Error("User not found");
