@@ -1,0 +1,4 @@
+
+To view logs in real time
+
+tail -f logs/error.log

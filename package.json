@@ -19,6 +19,7 @@
     "@aws-sdk/client-s3": "^3.590.0",
     "@aws-sdk/s3-request-presigner": "^3.590.0",
     "@types/jsonwebtoken": "^9.0.6",
+    "@types/winston": "^2.4.4",
     "bcrypt": "^5.1.1",
     "cookie-parser": "^1.4.7",
     "cookie-session": "^2.1.0",
@@ -41,7 +42,9 @@
     "passport-facebook": "^3.0.0",
     "passport-google-oauth2": "^0.2.0",
     "sharp": "^0.33.4",
-    "socket.io": "^4.8.1"
+    "socket.io": "^4.8.1",
+    "winston": "^3.17.0",
+    "winston-daily-rotate-file": "^5.0.0"
   },
   "devDependencies": {
     "@types/bcrypt": "^5.0.2",
