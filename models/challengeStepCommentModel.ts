@@ -1,17 +1,17 @@
 import { Schema, model } from "mongoose";
 
-interface ISolutionComment {
-  solution_id: Schema.Types.ObjectId;
+interface IChallengeStepComment {
+  step_id: Schema.Types.ObjectId;
   comment: string;
   user: Schema.Types.ObjectId;
 }
 
-const solutionCommentSchema = new Schema<ISolutionComment>(
+const challengeStepCommentSchema = new Schema<IChallengeStepComment>(
   {
-    solution_id: {
+    step_id: {
       type: Schema.Types.ObjectId,
       required: true,
-      ref: "ChallengeSolution",
+      ref: "ChallengeStep",
     },
     comment: {
       type: String,
@@ -28,9 +28,9 @@ const solutionCommentSchema = new Schema<ISolutionComment>(
   }
 );
 
-const SolutionComment = model<ISolutionComment>(
-  "SolutionComment",
-  solutionCommentSchema
+const ChallengeStepComment = model<IChallengeStepComment>(
+  "ChallengeStepComment",
+  challengeStepCommentSchema
 );
 
-export default SolutionComment;
+export default ChallengeStepComment; 

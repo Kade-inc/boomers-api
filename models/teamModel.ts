@@ -22,14 +22,14 @@ const teamSchema = new Schema<ITeam>(
     },
     name: {
       type: String,
-      required: false,
+      required: true,
     },
     isActive: {
       type: Boolean,
     },
     teamUsername: {
       type: String,
-      required: true,
+      required: false,
       unique: true,
     },
     displayImage: {

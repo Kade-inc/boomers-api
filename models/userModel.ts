@@ -7,6 +7,7 @@ interface IUser {
   isVerified: boolean;
   profile: Schema.Types.ObjectId;
   username: string;
+  role: Schema.Types.ObjectId;
 }
 
 const userSchema = new Schema<IUser>(
@@ -37,6 +38,11 @@ const userSchema = new Schema<IUser>(
       required: true,
       unique: true,
     },
+    role: {
+      type: Schema.Types.ObjectId,
+      ref: "Role",
+      default: null
+    }
   },
   {
     timestamps: true,

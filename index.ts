@@ -56,7 +56,7 @@ const server = http.createServer(app);
 // Initialize Socket.IO and attach it to the HTTP server
 export const io = new Server(server, {
   cors: {
-    origin: `http://localhost:5173` || "*", // update to your frontend URL
+    origin: `http://localhost:5173`,
     methods: ["GET", "POST", "PATCH"],
   },
 });
@@ -79,7 +79,10 @@ io.on("connection", (socket) => {
     console.log(`Socket ${socket.id} joined room team_${teamId}`);
   });
 
-
+  socket.on("joinChallenge", ({ challengeId }) => {
+    socket.join(challengeId);
+    console.log(`Socket ${socket.id} joined room challenge_${challengeId}`);
+  });
 
   socket.on("disconnect", () => {
     console.log(`Socket disconnected: ${socket.id}`);

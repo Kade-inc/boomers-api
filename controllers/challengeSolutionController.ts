@@ -9,6 +9,46 @@ import ChallengeStep from "../models/challengeStepModel";
 import UserProfile from "../models/userProfileModel";
 import SolutionComment from "../models/solutionCommentModel";
 import SolutionRating from "../models/solutionRatingModel";
+import Notification from "../models/notificationModel";
+import { Types, Document } from "mongoose";
+
+interface PopulatedUser {
+  _id: Types.ObjectId;
+  profile: {
+    firstName: string;
+    lastName: string;
+    username: string;
+  };
+}
+
+interface PopulatedChallengeSolution extends Document {
+  user_id: PopulatedUser;
+  // ... other fields from ChallengeSolution
+}
+
+interface PopulatedSolutionComment {
+  user: {
+    _id: Types.ObjectId;
+    profile: {
+      firstName: string;
+      lastName: string;
+      username: string;
+    };
+  };
+  // ... other fields
+}
+
+interface PopulatedRatingResponse extends Document {
+  user_id: {
+    _id: Types.ObjectId;
+    profile: {
+      firstName: string;
+      lastName: string;
+      username: string;
+    };
+  };
+  // ... other fields
+}
 
 //@desc Post Solution
 //@route POST /api/challenges/:id/solutions
@@ -79,20 +119,31 @@ export const updateChallengeSolution = asyncHandler(
   async (req: CustomRequest, res: Response) => {
     try {
       const solutionId = req.params.solutionId;
-      const solution = await ChallengeSolution.findById({ _id: solutionId });
+      const initialChallengeSolution = await ChallengeSolution.findById({ _id: solutionId }).populate({
+        path: 'user_id',
+        model: 'User',
+        select: 'profile',
+        populate: {
+          path: 'profile',
+          model: 'UserProfile',
+          select: 'firstName lastName username'
+        }
+      }).lean();
+    
 
       const challenge = await TeamChallenge.findById({
         _id: req.params.id,
       });
 
-      if (!solution || !challenge) {
+      if (!initialChallengeSolution || !challenge) {
         res.status(404).json({ error: "Solution does not exist" });
         return;
       }
-      if (req.user.id !== solution?.user_id.toString()) {
+      if (req.user.id !== (initialChallengeSolution?.user_id as any)._id.toString()) {
         res.status(403).json({ error: "Solution does not belong to you" });
         return;
       } else {
+
         const { status, demo_url, solution } = req.body;
         let completedDate;
 
@@ -115,6 +166,24 @@ export const updateChallengeSolution = asyncHandler(
             return;
           }
           completedDate = new Date();
+  
+            const username = (initialChallengeSolution.user_id as any).profile.firstName ? `${(initialChallengeSolution.user_id as any).profile.firstName} ${(initialChallengeSolution.user_id as any).profile.lastName}` : (initialChallengeSolution.user_id as any).profile.username;
+        
+              const notification = await Notification.create({
+                user: challenge.owner_id,
+                message: `${username} has submitted a solution for the challenge: "${challenge.challenge_name}".`,
+                reference: challenge._id,
+                referenceModel: "TeamChallenge",
+                subreference: solutionId,
+                subreferenceModel: "ChallengeSolution",
+              });
+            
+              const io = req.app.locals.io;
+              // Emit notification only to the challenge owner's personal room
+              io.to(challenge.owner_id.toString()).emit("pushNotification", notification);
+              console.log("Notification emitted to challenge owner's room " + challenge.owner_id.toString(), notification);
+            
+  
         }
 
         const updatedSolution = await ChallengeSolution.findByIdAndUpdate(
@@ -149,6 +218,16 @@ export const getChallengeSolution = asyncHandler(
           path: 'challenge_id',
           model: 'TeamChallenge',
           select: '-__v'
+        })
+        .populate({
+          path: 'user_id',
+          model: 'User',
+          select: 'profile _id',
+          populate: {
+            path: 'profile',
+            model: 'UserProfile',
+            select: 'firstName lastName username'
+          }
         });
 
       if (!solution) {
@@ -156,11 +235,12 @@ export const getChallengeSolution = asyncHandler(
         return;
       }
 
-      // Transform the response to rename challenge_id to challenge
-      const { challenge_id, ...rest } = solution.toObject();
+      // Transform the response to rename challenge_id to challenge and user_id to user
+      const { challenge_id, user_id, ...rest } = solution.toObject();
       const responseData = {
         ...rest,
-        challenge: challenge_id
+        challenge: challenge_id,
+        user: user_id
       };
 
       res.status(200).json({ message: "successful", data: responseData });
@@ -181,9 +261,34 @@ export const getAllChallengeSolutions = asyncHandler(
 
       const solutions = await ChallengeSolution.find({
         challenge_id: challengeId,
+      }).populate({
+        path: 'user_id',
+        model: 'User',
+        select: 'profile _id',
+        populate: {
+          path: 'profile',
+          model: 'UserProfile',
+          select: 'firstName lastName username profile_picture',
+          transform: (doc) => {
+            if (doc.profile_picture) {
+              doc.profile_picture = `${process.env.S3_BUCKET_PREFIX}${doc.profile_picture}`;
+            }
+            return doc;
+          }
+        },
+       
       });
 
-      res.status(200).json({ message: "successful", data: solutions });
+      // Transform the response to rename user_id to user
+      const transformedSolutions = solutions.map(solution => {
+        const { user_id, ...rest } = solution.toObject();
+        return {
+          ...rest,
+          user: user_id
+        };
+      });
+
+      res.status(200).json({ message: "successful", data: transformedSolutions });
     } catch (error: any) {
       console.log("ERRROR: ", error);
       res.status(500).json({ error: error.message });
@@ -264,13 +369,94 @@ export const postSolutionComment = asyncHandler(
           return;
         }
 
-        const user = await UserProfile.find({ user_id: req.user.id });
-
         const solutionComment = await SolutionComment.create({
           solution_id: req.params.solutionId,
           comment,
-          user: user[0],
+          user: req.user.id,
         });
+
+        const populatedSolutionComment = await solutionComment.populate({
+          path: 'user',
+          model: 'User',
+          select: 'profile _id',
+          populate: {
+            path: 'profile',
+            model: 'UserProfile',
+            select: 'firstName lastName username',
+          }
+        }) as PopulatedSolutionComment;
+
+        console.log("populatedSolutionComment", populatedSolutionComment);
+        
+        const username = populatedSolutionComment.user.profile.firstName && populatedSolutionComment.user.profile.lastName ? `${populatedSolutionComment.user.profile.firstName} ${populatedSolutionComment.user.profile.lastName}` : populatedSolutionComment.user.profile.username;
+        
+        // Get the solution to find its creator
+        const solution = await ChallengeSolution.findById(req.params.solutionId)
+          .populate({
+            path: 'user_id',
+            model: 'User',
+            select: 'profile',
+            populate: {
+              path: 'profile',
+              model: 'UserProfile',
+              select: 'firstName lastName username'
+            }
+          });
+
+        if (!solution) {
+          res.status(404).json({ message: "Solution not found" });
+          return;
+        }
+
+        const solutionCreatorName = (solution.user_id as any).profile.firstName && (solution.user_id as any).profile.lastName 
+          ? `${(solution.user_id as any).profile.firstName} ${(solution.user_id as any).profile.lastName}`
+          : (solution.user_id as any).profile.username;
+
+        // Get all unique users who have commented on this solution
+        const previousComments = await SolutionComment.find({
+          solution_id: req.params.solutionId,
+          user: { $ne: req.user.id } // Exclude current user
+        }).select('user').lean();
+
+        // Create a Set of all users to notify (previous commenters + solution creator)
+        const usersToNotify = new Set([...previousComments].map(comment => comment.user.toString()));
+        
+        // Add solution creator if they're not the one commenting
+        if (solution.user_id.toString() !== req.user.id) {
+          usersToNotify.add(solution.user_id.toString());
+        }
+
+        // Create notifications for all users to notify
+        for (const userId of usersToNotify) {
+          console.log("Processing userId:", userId);
+          console.log("userId type:", typeof userId);
+          console.log("userId length:", userId.length);
+
+          // Validate that userId is a valid 24-character hex string
+          if (!/^[0-9a-fA-F]{24}$/.test(userId)) {
+            console.error("Invalid userId format:", userId);
+            continue;
+          }
+
+          const message = userId === (solution.user_id as any)._id.toString()
+            ? `${username} has commented on your solution for the challenge: "${challengeExists[0].challenge_name}".`
+            : `${username} has also commented on ${solutionCreatorName}'s solution for the challenge: "${challengeExists[0].challenge_name}".`;
+
+          try {
+            const notification = await Notification.create({
+              user: new Types.ObjectId(userId),
+              message,
+              reference: challenge_id,
+              referenceModel: "SolutionComment",
+            });
+          
+            const io = req.app.locals.io;
+            io.to(userId).emit("pushNotification", notification);
+            console.log("Notification emitted to user's room " + userId, notification);
+          } catch (error) {
+            console.error("Error creating notification for userId:", userId, error);
+          }
+        }
 
         res.status(201).json({ message: "successful", data: solutionComment });
       }
@@ -324,7 +510,7 @@ export const updateSolutionComment = asyncHandler(
           _id: req.params.commentId,
         });
 
-        if (solutionComment[0]?.user.user_id.toString() !== req.user.id) {
+        if (solutionComment[0]?.user.toString() !== req.user.id) {
           res.status(403).json({ error: "This is not your comment" });
           return;
         }
@@ -362,7 +548,20 @@ export const getSolutionComments = asyncHandler(
         return;
       }
 
-      const solutionComments = await SolutionComment.find({});
+      const solutionComments = await SolutionComment.find({solution_id: req.params.solutionId}).populate({
+        path: 'user',
+        select: '_id',
+        populate: {
+          path: 'profile',
+          select: 'firstName lastName username profile_picture',
+          transform: (doc) => {
+            if (doc.profile_picture) {
+              doc.profile_picture = `${process.env.S3_BUCKET_PREFIX}${doc.profile_picture}`;
+            }
+            return doc;
+          }
+        }
+      });
 
       res.status(200).json({ message: "successful", data: solutionComments });
     } catch (error: any) {
@@ -390,7 +589,26 @@ export const getSolutionComment = asyncHandler(
 
       const solutionComment = await SolutionComment.findOne({
         _id: req.params.commentId,
+        solution_id: req.params.solutionId
+      }).populate({
+        path: 'user',
+        select: '_id',
+        populate: {
+          path: 'profile',
+          select: 'firstName lastName username profile_picture',
+          transform: (doc) => {
+            if (doc.profile_picture) {
+              doc.profile_picture = `${process.env.S3_BUCKET_PREFIX}${doc.profile_picture}`;
+            }
+            return doc;
+          }
+        }
       });
+
+      if (!solutionComment) {
+        res.status(404).json({ message: "Comment not found" });
+        return;
+      }
 
       res.status(200).json({ message: "successful", data: solutionComment });
     } catch (error: any) {
@@ -425,7 +643,7 @@ export const deleteSolutionComment = asyncHandler(
         return;
       }
 
-      if (solutionComment.user.user_id.toString() !== req.user.id) {
+      if (solutionComment.user.toString() !== req.user.id) {
         res.status(403).json({ error: "This is not your comment" });
         return;
       }
@@ -504,6 +722,15 @@ export const postSolutionRating = asyncHandler(
         user_id: req.user.id,
       });
 
+      const populatedRatingResponse = await response.populate({
+        path: 'user_id',
+        select: 'profile',
+        populate: {
+          path: 'profile',
+          select: 'firstName lastName username'
+        }
+      }) as PopulatedRatingResponse;
+
       if (challenge.owner_id.toString() === req.user.id) {
         await ChallengeSolution.findByIdAndUpdate(
           req.params.solutionId,
@@ -533,6 +760,22 @@ export const postSolutionRating = asyncHandler(
           }
         );
       }
+
+      const username = populatedRatingResponse.user_id.profile.firstName && populatedRatingResponse.user_id.profile.lastName ? `${populatedRatingResponse.user_id.profile.firstName} ${populatedRatingResponse.user_id.profile.lastName}` : populatedRatingResponse.user_id.profile.username;
+      const notification = await Notification.create({
+        user: req.user.id,
+        message: `${username} has given a rating for your solution for the challenge: "${challenge.challenge_name}".`,
+        reference: challenge._id,
+        referenceModel: "TeamChallenge",
+        subreference: req.params.solutionId,
+        subreferenceModel: "SolutionRating",
+      });
+    
+      const io = req.app.locals.io;
+      // Emit notification only to the challenge owner's personal room
+      io.to(solution.user_id.toString()).emit("pushNotification", notification);
+      console.log("Notification emitted to user's room " + solution.user_id.toString(), notification);
+
       res.status(201).json({ message: "successful", data: response });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -575,6 +818,42 @@ export const getSolutionRatings = asyncHandler(
     }
   }
 );
+
+//@desc Get Solution ratings
+//@route GET /api/challenges/:id/solutions/:solutionId/rating/:ratingId
+//access private
+export const getSolutionRating = asyncHandler(
+  async (req: CustomRequest, res: Response) => {
+    try {
+      const challenge_id = req.params.id;
+      const challenge: any = await TeamChallenge.findOne({
+        _id: challenge_id,
+      });
+      const solution = await ChallengeSolution.findById({
+        _id: req.params.solutionId,
+      });
+
+      if (!challenge) {
+        res.status(404).json({ message: "Challenge does not exist" });
+        return;
+      }
+
+      if (!solution) {
+        res.status(404).json({ message: "Solution does not exist" });
+        return;
+      }
+
+      const response = await SolutionRating.findById(req.params.ratingId);
+
+      res.status(200).json({ message: "successful", data: response });
+    } catch (error: any) {
+      console.log(error);
+      res.status(500).json({ error: error.message });
+    }
+  }
+);
+
+
 
 //@desc Update Solution rating
 //@route GET /api/challenges/:id/solutions/:solutionId/rating/:ratingId

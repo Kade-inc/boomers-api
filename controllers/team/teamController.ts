@@ -168,10 +168,8 @@ export const getAllTeams = asyncHandler(async (req: Request, res: Response) => {
     let topicsFilter: RegExp[] | undefined;
     if (subdomainTopics) {
       if (Array.isArray(subdomainTopics)) {
-        // Cast each element to string before creating the RegExp
         topicsFilter = (subdomainTopics as string[]).map((topic: string) => new RegExp(topic, 'i'));
       } else if (typeof subdomainTopics === 'string') {
-        // If it's a comma-separated string, split it; otherwise, treat it as a single topic
         topicsFilter = subdomainTopics.includes(',')
           ? subdomainTopics.split(',').map((topic: string) => new RegExp(topic.trim(), 'i'))
           : [new RegExp(subdomainTopics, 'i')];
@@ -193,17 +191,15 @@ export const getAllTeams = asyncHandler(async (req: Request, res: Response) => {
         query.name = { $regex: new RegExp(name as string, 'i') };
       }
       if (subdomain) {
-        // Use a case-insensitive regex for the subdomain filter
         query.subdomain = { $regex: new RegExp(subdomain as string, 'i') };
       }
 
       if (topicsFilter) {
-        // Filter documents where at least one element in subdomainTopics matches one of the topics in topicsFilter
         query.subdomainTopics = { $in: topicsFilter };
       }
 
-      teams = await Team.find(query).skip(skip).limit(limitNum);
-      totalCount = await Team.countDocuments(query);
+      teams = await Team.find(query);
+      totalCount = teams.length;
     } else {
       // Build a dynamic query based on the available filters
       const query: any = {};
@@ -214,7 +210,6 @@ export const getAllTeams = asyncHandler(async (req: Request, res: Response) => {
         query.domain = { $regex: new RegExp(domain as string, 'i') };
       }
       if (subdomain) {
-        // Use a case-insensitive regex for the subdomain filter
         query.subdomain = { $regex: new RegExp(subdomain as string, 'i') };
       }
 
@@ -226,17 +221,16 @@ export const getAllTeams = asyncHandler(async (req: Request, res: Response) => {
       totalCount = await Team.countDocuments(query);
     }
 
-    const totalPages = Math.ceil(totalCount / limitNum);
+    const totalPages = userId ? 1 : Math.ceil(totalCount / limitNum);
     res.status(200).json({
       message: "successful",
-      currentPage: pageNum,
-      perPage: limitNum,
+      currentPage: userId ? 1 : pageNum,
+      perPage: userId ? totalCount : limitNum,
       totalPages,
       totalCount,
       data: teams,
     });
   } catch (error: any) {
-  
     throw new Error(error);
   }
 });
@@ -459,89 +453,6 @@ export const deleteTeam = asyncHandler(async (req: Request, res: Response) => {
   } catch (error) {}
 });
 
-//@desc Post Domain
-//@route POST /api/teams/domains
-//access private
-export const addDomain = asyncHandler(async (req: Request, res: Response) => {
-  try {
-    const { name } = req.body;
-
-    if (!name.trim()) {
-      res.status(400);
-      throw new Error("No name inputed");
-    }
-
-    const commonName = name.trim().replace(/ /g, "_").toLowerCase();
-
-    const domain = await TeamDomain.create({ name, commonName });
-    res.status(201).json(domain);
-  } catch (error: any) {
-    res.status(400).json({ error: error });
-  }
-});
-
-//@desc Post Subdomain
-//@route POST /api/teams/domains/:id/subdomain
-//access private
-export const addSubDomain = asyncHandler(
-  async (req: Request, res: Response) => {
-    try {
-      const { name } = req.body;
-
-      const teamDomain = await TeamDomain.findOne({ _id: req.params.id });
-      if (!name.trim()) {
-        res.status(400);
-        throw new Error("No name inputed");
-      }
-
-      if (!teamDomain) {
-        res.status(404).json({ error: "Not found" });
-        return;
-      }
-
-      const teamSubDomain = await TeamSubDomain.findOne({ name: name });
-
-      if (teamSubDomain) {
-        res.status(409).json({ error: "Sub Domain exists" });
-        return;
-      }
-
-      const commonName = name.trim().replace(/ /g, "_").toLowerCase();
-
-      const domain = await TeamSubDomain.create({
-        name,
-        parentDomain: req.params.id,
-        commonName,
-      });
-      res.status(201).json(domain);
-    } catch (error: any) {
-      res.status(400).json({ error: error });
-    }
-  }
-);
-
-//@desc Post Domain Topic
-//@route POST /api/teams/domains/topics
-//access private
-export const addDomainTopic = asyncHandler(
-  async (req: Request, res: Response) => {
-    try {
-      const { name } = req.body;
-
-      if (!name.trim()) {
-        res.status(400);
-        throw new Error("No name inputed");
-      }
-
-      const domainTopic = await DomainTopic.create({
-        name,
-      });
-      res.status(201).json(domainTopic);
-    } catch (error: any) {
-      res.status(400).json({ error: error });
-    }
-  }
-);
 
 //@desc Get Team recommendations
 //@route GET /api/teams/recommendations

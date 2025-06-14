@@ -6,6 +6,8 @@ interface INotification {
   isRead: boolean;
   reference: Schema.Types.ObjectId;
   referenceModel: string; // This field stores the model name for the reference
+  subreference: Schema.Types.ObjectId;
+  subreferenceModel: string;
 }
 
 const notificationSchema = new Schema<INotification>(
@@ -33,6 +35,15 @@ const notificationSchema = new Schema<INotification>(
       required: true,
       // Optionally enforce a list of allowed models:
       // enum: ["TeamChallenge", "AnotherModel", "YetAnotherModel"]
+    },
+    subreference: {
+      type: Schema.Types.ObjectId,
+      refPath: "subreferenceModel",
+      required: false,
+    },
+    subreferenceModel: {
+      type: String,
+      required: false,
     },
   },
   {

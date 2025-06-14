@@ -13,6 +13,7 @@ import {
   getChallengeSolution,
   getSolutionComment,
   getSolutionComments,
+  getSolutionRating,
   getSolutionRatings,
   postChallengeSolution,
   postSolutionComment,
@@ -27,6 +28,11 @@ import {
   getAllChallengeSteps,
   getChallengeStep,
   updateChallengeStep,
+  postSolutionStepComment,
+  updateSolutionStepComment,
+  getSolutionStepComments,
+  getSolutionStepComment,
+  deleteSolutionStepComment,
 } from "../../controllers/challengeStepsController";
 import {
   deleteChallengeComment,
@@ -561,7 +567,7 @@ challengeRouter.get("/:id/solutions/:solutionId/rating", getSolutionRatings);
  *      500:
  *        description: Server Error
  */
-challengeRouter.put(
+challengeRouter.patch(
   "/:id/solutions/:solutionId/rating/:ratingId",
   updateSolutionRating
 );
@@ -592,9 +598,147 @@ challengeRouter.delete(
   deleteSolutionRating
 );
 
+/**
+ * @openapi
+ * '/api/challenges/:id/solutions/:solutionId/steps/:stepId/comments':
+ *  post:
+ *     tags:
+ *     - Challenge Step Controller
+ *     summary: Add comment to solution step
+ *     responses:
+ *      201:
+ *        description: Created
+ *      400:
+ *        description: Bad Request
+ *      403:
+ *        description: Forbidden
+ *      404:
+ *        description: Not Found
+ *      500:
+ *        description: Server Error
+ */
+challengeRouter.post(
+  "/:id/solutions/:solutionId/steps/:stepId/comments",
+  postSolutionStepComment
+);
+
+/**
+ * @openapi
+ * '/api/challenges/:id/solutions/:solutionId/steps/:stepId/comments/:commentId':
+ *  put:
+ *     tags:
+ *     - Challenge Step Controller
+ *     summary: Update solution step comment
+ *     responses:
+ *      200:
+ *        description: Success
+ *      400:
+ *        description: Bad Request
+ *      403:
+ *        description: Forbidden
+ *      404:
+ *        description: Not Found
+ *      500:
+ *        description: Server Error
+ */
+challengeRouter.put(
+  "/:id/solutions/:solutionId/steps/:stepId/comments/:commentId",
+  updateSolutionStepComment
+);
+
+/**
+ * @openapi
+ * '/api/challenges/:id/solutions/:solutionId/steps/:stepId/comments':
+ *  get:
+ *     tags:
+ *     - Challenge Step Controller
+ *     summary: Get solution step comments
+ *     responses:
+ *      200:
+ *        description: Success
+ *      400:
+ *        description: Bad Request
+ *      404:
+ *        description: Not Found
+ *      500:
+ *        description: Server Error
+ */
+challengeRouter.get(
+  "/:id/solutions/:solutionId/steps/:stepId/comments",
+  getSolutionStepComments
+);
+
+/**
+ * @openapi
+ * '/api/challenges/:id/solutions/:solutionId/steps/:stepId/comments/:commentId':
+ *  get:
+ *     tags:
+ *     - Challenge Step Controller
+ *     summary: Get solution step comment
+ *     responses:
+ *      200:
+ *        description: Success
+ *      400:
+ *        description: Bad Request
+ *      404:
+ *        description: Not Found
+ *      500:
+ *        description: Server Error
+ */
+challengeRouter.get(
+  "/:id/solutions/:solutionId/steps/:stepId/comments/:commentId",
+  getSolutionStepComment
+);
+
+/**
+ * @openapi
+ * '/api/challenges/:id/solutions/:solutionId/steps/:stepId/comments/:commentId':
+ *  delete:
+ *     tags:
+ *     - Challenge Step Controller
+ *     summary: Delete solution step comment
+ *     responses:
+ *      204:
+ *        description: Success
+ *      400:
+ *        description: Bad Request
+ *      403:
+ *        description: Forbidden
+ *      404:
+ *        description: Not Found
+ *      500:
+ *        description: Server Error
+ */
+challengeRouter.delete(
+  "/:id/solutions/:solutionId/steps/:stepId/comments/:commentId",
+  deleteSolutionStepComment
+);
+
 challengeRouter.delete(
   "/",
   deleteMultipleChallengesByUser
+);
+
+/**
+ * @openapi
+ * '/api/challenges/:id/solutions/:solutionId/rating/:ratingId':
+ *  get:
+ *     tags:
+ *     - Challenge Solution Controller
+ *     summary: Get solution rating
+ *     responses:
+ *      200:
+ *        description: Success
+ *      400:
+ *        description: Bad Request
+ *      404:
+ *        description: Not Found
+ *      500:
+ *        description: Server Error
+ */
+challengeRouter.get(
+  "/:id/solutions/:solutionId/rating/:ratingId",
+  getSolutionRating
 );
 
 export default challengeRouter;

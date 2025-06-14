@@ -7,6 +7,17 @@ import { CustomRequest } from "../../middleware/validateTokenHandler";
 import TeamMember from "../../models/teamMemberModel";
 import TeamMemberRequest from "../../models/teamMemberRequestModel";
 import UserProfile from "../../models/userProfileModel";
+import { Types, Document } from "mongoose";
+import Notification from "../../models/notificationModel";
+
+interface PopulatedUser extends Document {
+  _id: Types.ObjectId;
+  profile: {
+    firstName: string;
+    lastName: string;
+    username: string;
+  };
+}
 
 //@desc Create team
 //@route POST /api/team-member/create
@@ -77,6 +88,19 @@ export const addTeamMember = asyncHandler(
         team_id,
         user_id: userExists._id,
       });
+
+      // Create notification for added user
+      const notification = await Notification.create({
+        user: userExists._id,
+        message: `You have been added to "${teamExists.name}".`,
+        reference: teamExists._id,
+        referenceModel: "Team",
+      });
+
+      const io = req.app.locals.io;
+      io.to(userExists._id.toString()).emit("pushNotification", notification);
+      console.log("Notification emitted to user's room " + userExists._id.toString(), notification);
+
 
       res.status(201).json({ message: "successful", data: teamMember });
     } catch (error: any) {
@@ -155,6 +179,31 @@ export const joinTeam = asyncHandler(
         team_id: teamExists._id,
       });
 
+      const populatedUser = await User.findById({ _id: req.user.id }).populate({
+        path: 'profile',
+        select: 'firstName lastName username'
+      }) as PopulatedUser | null;
+
+      if (!populatedUser) {
+        res.status(404);
+        throw new Error("User not found");
+      }
+
+      const username = populatedUser.profile.firstName && populatedUser.profile.lastName ? `${populatedUser.profile.firstName} ${populatedUser.profile.lastName}` : populatedUser.profile.username;
+      // Create notification for team owner
+      const notification = await Notification.create({
+        user: teamExists.owner_id,
+        message: `${username} has requested to join "${teamExists.name}".`,
+        reference: teamExists._id,
+        referenceModel: "Team",
+        subreference: teamMemberRequest._id,
+        subreferenceModel: "TeamMemberRequest",
+      });
+
+      const io = req.app.locals.io;
+      io.to(teamExists.owner_id.toString()).emit("pushNotification", notification);
+      console.log("Notification emitted to team owner's room " + teamExists.owner_id.toString(), notification);
+
       const emailTemplate = `<div>
         <p>Hi ${owner?.username},</p>
         <p>You have a request from <strong>${userExists?.username}</strong> to join your team. Kindly log in to the application to review their request.</p>
@@ -188,6 +237,20 @@ export const updateJoinRequest = asyncHandler(
       if (req.user.id !== memberRequest.owner_id.toString()) {
         res.status(403);
         throw new Error("You do not have permission to approve this request");
+      }
+
+      const userExists = await User.findOne({
+        _id: { $in: [memberRequest.user_id] },
+      });
+
+      if (!userExists) {
+        res.status(400);
+        throw new Error("User does not exist.");
+      }
+
+      if (!userExists.isVerified) {
+        res.status(400);
+        throw new Error("User is not verified.");
       }
 
       const { status, comment } = req.body;
@@ -225,27 +288,29 @@ export const updateJoinRequest = asyncHandler(
         }
       );
 
-      const teamMember = await TeamMember.create({
-        owner_id: req.user.id,
-        team_id: memberRequest.team_id,
-        user_id: memberRequest.user_id,
-      });
+      if (status.trim().toLowerCase() === "approved") {
+        await TeamMember.create({
+          owner_id: req.user.id,
+          team_id: memberRequest.team_id,
+          user_id: memberRequest.user_id,
+        });
+      }
 
       const teamName = await Team.findById({ _id: memberRequest.team_id})
 
-      const userExists = await User.findOne({
-        _id: { $in: [memberRequest.user_id] },
+      const notification = await Notification.create({
+        user: memberRequest.user_id,
+        message: `Your request to join ${teamName?.name} has been ${status.toLowerCase()}.`,
+        reference: memberRequest.team_id,
+        referenceModel: "Team",
+        subreference: memberRequest._id,
+        subreferenceModel: "TeamMemberRequest",
       });
 
-      if (!userExists) {
-        res.status(400);
-        throw new Error("User does not exist.");
-      }
+      const io = req.app.locals.io;
+      io.to(memberRequest.user_id.toString()).emit("pushNotification", notification);
+      console.log("Notification emitted to user's room " + memberRequest.user_id.toString(), notification);
 
-      if (!userExists.isVerified) {
-        res.status(400);
-        throw new Error("User is not verified.");
-      }
 
       const emailTemplate = `<div>
           <p>Hi,</p>
@@ -285,10 +350,30 @@ export const deleteTeamMember = asyncHandler(
         return
       }
       await TeamMember.findByIdAndDelete(teamMember?._id);
+
+      const teamName = await Team.findById({ _id: teamMember.team_id})
+
+      const notification = await Notification.create({
+        user: teamMember.user_id,
+        message: `You have been removed from "${teamName?.name}".`,
+        reference: teamMember.team_id,
+        referenceModel: "Team",
+        subreference: teamMember._id,
+        subreferenceModel: "RemoveTeamMember",
+      });
+
+      const io = req.app.locals.io;
+      io.to(teamMember.user_id.toString()).emit("pushNotification", notification);
+      console.log("Notification emitted to user's room " + teamMember.user_id.toString(), notification);
+
+
       res.status(204).json({
         message: "Team member removed successfully"
       });
-    } catch (error) {}
+    } catch (error: any) {
+      res.status(500)
+      throw new Error(error);
+    }
   }
 );
 

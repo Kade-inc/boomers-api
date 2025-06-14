@@ -1,4 +1,5 @@
 import { Schema, model } from "mongoose";
+import TeamDomain from "./teamDomainModel";
 
 interface ITeamSubDomain {
   parentDomain: Schema.Types.ObjectId;
@@ -15,6 +16,7 @@ const teamSubDomainSchema = new Schema<ITeamSubDomain>(
     },
     parentDomain: {
       type: Schema.Types.ObjectId,
+      ref: 'TeamDomain',
       required: true,
     },
     commonName: {
