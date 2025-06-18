@@ -257,4 +257,95 @@ export const clearSearchHistory = asyncHandler(
         }
     }
 )
+
+export const searchUsersAndTeams = asyncHandler(
+    async (req: CustomRequest, res: Response) => {
+        const { q, page = 1, pageSize = 10 } = req.query
+        const userId = req.user.id
+
+        if (!q) {
+            res.status(400).json({ message: "Missing search query." });
+            return
+        }
+
+        const query = String(q).trim();
+        const currentPage = Number(page);
+        const limit = Number(pageSize);
+        const skip = (currentPage - 1) * limit;
+
+        try {
+            // Search only teams owned by the user
+            const teams = await Team.find({
+                owner_id: userId,
+                $or: [
+                    { name: { $regex: query, $options: "i" } },
+                    { teamUsername: { $regex: query, $options: "i" } }
+                ]
+            })
+            .select("_id name teamColor domain subdomain subdomainTopics owner_id")
+            .skip(skip)
+            .limit(limit);
+        
+            // Search Profiles by name or job
+            let profiles = await UserProfile.find({
+                $or: [
+                    { firstName: { $regex: query, $options: "i" } },
+                    { lastName: { $regex: query, $options: "i" } },
+                    { username: { $regex: query, $options: "i" } },
+                ]
+            })
+            .select("user_id firstName lastName username profile_picture")
+            .skip(skip)
+            .limit(limit);
+
+            profiles.map((profile:any) => {
+                profile.profile_picture = profile.profile_picture ? `${process.env.S3_BUCKET_PREFIX}${profile.profile_picture}` : null
+            });
+
+            const teamCount = await Team.countDocuments({
+                owner_id: userId,
+                $or: [
+                    { name: { $regex: query, $options: "i" } },
+                    { teamUsername: { $regex: query, $options: "i" } }
+                ]
+            });
+            
+            const profileCount = await UserProfile.countDocuments({
+                $or: [
+                    { firstName: { $regex: query, $options: "i" } },
+                    { lastName: { $regex: query, $options: "i" } },
+                    { username: { $regex: query, $options: "i" } },
+                ]
+            });
+
+            const totalCount = teamCount + profileCount;
+
+            // Combine and format results
+            const combinedResults = [
+                ...teams.map(team => ({
+                    ...team.toObject(),
+                    type: 'team',
+                })),
+                ...profiles.map(profile => ({
+                    ...profile.toObject(),
+                    type: 'profile'
+                }))
+            ];
+
+            res.status(200).json({
+                data: {
+                    results: combinedResults,
+                    pagination: {
+                        currentPage,
+                        totalPages: Math.ceil(totalCount / limit),
+                        totalResults: totalCount
+                    }
+                }
+            });
+        } catch (err) {
+            res.status(500)
+            throw new Error(`Search failed with error: ${err}`);
+        }
+    }
+);
   
