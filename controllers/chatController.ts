@@ -71,12 +71,17 @@ export const findUserChats = asyncHandler(
   async (req: CustomRequest, res: Response) => {
     const userId = req.params.userId;
 
+    if (req.user.id !== userId) {
+      res.status(403).json({ message: "User unauthorized to view chats" });
+      return
+    }
+
     try {
       const chats = await Chat.find({
         members: { $in: [userId] },
       });
 
-      res.status(200).json(chats);
+      res.status(200).json({message: "Chats retrieved successfully.", data: chats});
     } catch (error) {
       console.log(error);
       res.status(500).json(error);
