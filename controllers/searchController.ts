@@ -274,57 +274,58 @@ export const searchUsersAndTeams = asyncHandler(
         const skip = (currentPage - 1) * limit;
 
         try {
-            // Search only teams owned by the user
-            const teams = await Team.find({
-                owner_id: userId,
-                $or: [
-                    { name: { $regex: query, $options: "i" } },
-                    { teamUsername: { $regex: query, $options: "i" } }
-                ]
-            })
-            .select("_id name teamColor domain subdomain subdomainTopics owner_id")
-            .skip(skip)
-            .limit(limit);
-        
-            // Search Profiles by name or job
-            let profiles = await UserProfile.find({
-                $or: [
-                    { firstName: { $regex: query, $options: "i" } },
-                    { lastName: { $regex: query, $options: "i" } },
-                    { username: { $regex: query, $options: "i" } },
-                ]
-            })
-            .select("user_id firstName lastName username profile_picture")
-            .skip(skip)
-            .limit(limit);
+            // Get all matching teams and profiles first
+            const [teams, profiles] = await Promise.all([
+                Team.find({
+                    owner_id: userId,
+                    $or: [
+                        { name: { $regex: query, $options: "i" } },
+                        { teamUsername: { $regex: query, $options: "i" } }
+                    ]
+                })
+                .select("_id name teamColor domain subdomain subdomainTopics owner_id"),
+                
+                UserProfile.find({
+                    $or: [
+                        { firstName: { $regex: query, $options: "i" } },
+                        { lastName: { $regex: query, $options: "i" } },
+                        { username: { $regex: query, $options: "i" } },
+                    ]
+                })
+                .select("user_id firstName lastName username profile_picture")
+            ]);
 
-            profiles.map((profile:any) => {
+            // Process profile pictures
+            profiles.forEach((profile:any) => {
                 profile.profile_picture = profile.profile_picture ? `${process.env.S3_BUCKET_PREFIX}${profile.profile_picture}` : null
             });
 
-            const teamCount = await Team.countDocuments({
-                owner_id: userId,
-                $or: [
-                    { name: { $regex: query, $options: "i" } },
-                    { teamUsername: { $regex: query, $options: "i" } }
-                ]
-            });
-            
-            const profileCount = await UserProfile.countDocuments({
-                $or: [
-                    { firstName: { $regex: query, $options: "i" } },
-                    { lastName: { $regex: query, $options: "i" } },
-                    { username: { $regex: query, $options: "i" } },
-                ]
-            });
+            // Get total counts
+            const [teamCount, profileCount] = await Promise.all([
+                Team.countDocuments({
+                    owner_id: userId,
+                    $or: [
+                        { name: { $regex: query, $options: "i" } },
+                        { teamUsername: { $regex: query, $options: "i" } }
+                    ]
+                }),
+                
+                UserProfile.countDocuments({
+                    $or: [
+                        { firstName: { $regex: query, $options: "i" } },
+                        { lastName: { $regex: query, $options: "i" } },
+                        { username: { $regex: query, $options: "i" } },
+                    ]
+                })
+            ]);
 
             const totalCount = teamCount + profileCount;
 
-            // Combine and format results
-            const combinedResults = [
+            // Combine and format all results
+            const allResults = [
                 ...teams.map(team => ({
                     ...team.toObject(),
-                    type: 'team',
+                    type: 'team'
                 })),
                 ...profiles.map(profile => ({
                     ...profile.toObject(),
@@ -332,9 +333,12 @@ export const searchUsersAndTeams = asyncHandler(
                 }))
             ];
 
+            // Apply pagination to the combined results
+            const paginatedResults = allResults.slice(skip, skip + limit);
+
             res.status(200).json({
                 data: {
-                    results: combinedResults,
+                    results: paginatedResults,
                     pagination: {
                         currentPage,
                         totalPages: Math.ceil(totalCount / limit),
