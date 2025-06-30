@@ -19,6 +19,50 @@ const upload = multer({ storage: storage });
 
 const teamRouter = express.Router();
 
+
+/**
+ * @openapi
+ * '/api/teams':
+ *  post:
+ *     tags:
+ *     - Team Controller
+ *     summary: Get all teams
+ *     requestBody:
+ *      required: false
+ *     responses:
+ *      200:
+ *        description: Success
+ *      400:
+ *        description: Bad Request
+ *      409:
+ *        description: Conflict
+ *      404:
+ *        description: Not Found
+ *      500:
+ *        description: Server Error
+ */
+teamRouter.get("/", getAllTeams);
+
+/**
+ * @openapi
+ * '/api/teams/:id':
+ *  get:
+ *     tags:
+ *     - Team Controller
+ *     summary: Get a team
+ *     responses:
+ *      200:
+ *        description: Ok
+ *      400:
+ *        description: Bad Request
+ *      404:
+ *        description: Not Found
+ *      500:
+ *        description: Server Error
+ */
+teamRouter.get("/:id", getTeam);
+
+
 teamRouter.use(validateToken);
 
 /**
@@ -66,28 +110,7 @@ teamRouter.use(validateToken);
  */
 teamRouter.post("/", upload.single("image"), createTeam);
 
-/**
- * @openapi
- * '/api/teams':
- *  post:
- *     tags:
- *     - Team Controller
- *     summary: Get all teams
- *     requestBody:
- *      required: false
- *     responses:
- *      200:
- *        description: Success
- *      400:
- *        description: Bad Request
- *      409:
- *        description: Conflict
- *      404:
- *        description: Not Found
- *      500:
- *        description: Server Error
- */
-teamRouter.get("/", getAllTeams);
+
 
 /**
  * @openapi
@@ -191,23 +214,6 @@ teamRouter.delete("/:id", deleteTeam);
  */
 teamRouter.get("/recommendations", getTeamRecommendations);
 
-/**
- * @openapi
- * '/api/teams/:id':
- *  get:
- *     tags:
- *     - Team Controller
- *     summary: Get a team
- *     responses:
- *      200:
- *        description: Ok
- *      400:
- *        description: Bad Request
- *      404:
- *        description: Not Found
- *      500:
- *        description: Server Error
- */
-teamRouter.get("/:id", getTeam);
+
 
 export default teamRouter;

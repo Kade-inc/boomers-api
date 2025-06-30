@@ -37,7 +37,9 @@ app.use(express.json());
 
 
 app.use("/api/users", [userRouter, userProfileRouter]);
-app.use("/api/teams", [teamRouter, teamChallengeRouter]);
+// app.use("/api/teams", [teamRouter, teamChallengeRouter]);
+app.use("/api/teams/:teamId/challenges", teamChallengeRouter);
+app.use("/api/teams", teamRouter);
 app.use("/api/team-member", teamMemberRouter);
 app.use("/api/challenges", challengeRouter);
 app.use("/api/chats", chatRouter);

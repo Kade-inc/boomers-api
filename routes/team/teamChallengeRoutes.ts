@@ -18,7 +18,31 @@ import multer from "multer";
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
-const teamChallengeRouter = express.Router();
+const teamChallengeRouter = express.Router({ mergeParams: true });
+
+
+/**
+ * @openapi
+ * '/api/team/:teamId/challenges/:challengeId':
+ *  get:
+ *     tags:
+ *     - Team Challenge Controller
+ *     summary: Get Individual Team Challenge
+ *     responses:
+ *      200:
+ *        description: success
+ *      400:
+ *        description: Bad Request
+ *      404:
+ *        description: Not Found
+ *      500:
+ *        description: Server Error
+ */
+teamChallengeRouter.get(
+  "/:challengeId",
+  getIndividualTeamChallenge
+);
+
 
 teamChallengeRouter.use(validateToken);
 
@@ -39,7 +63,7 @@ teamChallengeRouter.use(validateToken);
  *      500:
  *        description: Server Error
  */
-teamChallengeRouter.get("/:id/challenges", getAllTeamChallenges);
+teamChallengeRouter.get("/", getAllTeamChallenges);
 
 /**
  * @openapi
@@ -93,29 +117,9 @@ teamChallengeRouter.get("/:id/challenges", getAllTeamChallenges);
  *      500:
  *        description: Server Error
  */
-teamChallengeRouter.post("/:id/challenges", createTeamChallengeV2);
+teamChallengeRouter.post("/", createTeamChallengeV2);
 
-/**
- * @openapi
- * '/api/team/:teamId/challenges/:challengeId':
- *  get:
- *     tags:
- *     - Team Challenge Controller
- *     summary: Get Individual Team Challenge
- *     responses:
- *      200:
- *        description: success
- *      400:
- *        description: Bad Request
- *      404:
- *        description: Not Found
- *      500:
- *        description: Server Error
- */
-teamChallengeRouter.get(
-  "/:teamId/challenges/:challengeId",
-  getIndividualTeamChallenge
-);
+
 
 /**
  * @openapi
@@ -172,7 +176,7 @@ teamChallengeRouter.get(
  *        description: Server Error
  */
 teamChallengeRouter.put(
-  "/:teamId/challenges/:challengeId",
+  "/:challengeId",
   updateIndividualTeamChallengeV2
 );
 
@@ -198,7 +202,7 @@ teamChallengeRouter.put(
  *        description: Server Error
  */
 teamChallengeRouter.delete(
-  "/:teamId/challenges/:challengeId",
+  "/:challengeId",
   deleteIndividualTeamChallenge
 );
 
