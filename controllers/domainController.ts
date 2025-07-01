@@ -59,8 +59,6 @@ export const getAllSubDomainsList = asyncHandler(
           select: '_id name commonName',
           model: 'TeamDomain'
         });
-
-      console.log("SUBDOMAINS: ", subdomains);
       
       res.status(200).json({ message: "successful", data: subdomains });
     } catch (error: any) {
