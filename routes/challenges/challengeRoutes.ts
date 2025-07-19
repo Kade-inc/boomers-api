@@ -43,6 +43,24 @@ import {
 } from "../../controllers/team/teamChallengeController";
 const challengeRouter = express.Router();
 
+
+/**
+ * @openapi
+ * '/api/challenges/:id/solutions/:solutionId':
+ *  post:
+ *     tags:
+ *     - Challenge Solution Controller
+ *     summary: Get challenge solution
+ *     responses:
+ *      200:
+ *        description: Success
+ *      404:
+ *        description: Not Found
+ *      500:
+ *        description: Server Error
+ */
+challengeRouter.get("/:id/solutions/:solutionId", getChallengeSolution);
+
 challengeRouter.use(validateToken);
 
 /**
@@ -121,22 +139,7 @@ challengeRouter.post("/:id/solutions", postChallengeSolution);
  */
 challengeRouter.get("/:id/solutions", getAllChallengeSolutions);
 
-/**
- * @openapi
- * '/api/challenges/:id/solutions/:solutionId':
- *  post:
- *     tags:
- *     - Challenge Solution Controller
- *     summary: Get challenge solution
- *     responses:
- *      200:
- *        description: Success
- *      404:
- *        description: Not Found
- *      500:
- *        description: Server Error
- */
-challengeRouter.get("/:id/solutions/:solutionId", getChallengeSolution);
+
 
 /**
  * @openapi
