@@ -242,7 +242,12 @@ export const verifyUser = asyncHandler(async (req: Request, res: Response) => {
               profile: userProfile._id,
             });
           }
-          res.status(200).json({ successful: true, message: "User verified!" });
+          res.status(200).json({
+            message: "User verified!",
+            data: {
+              _id: user[0]._id,
+            },
+          });
         }
       } else {
         res.status(400).json({ error: "User code invalid" });

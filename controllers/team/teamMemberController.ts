@@ -99,8 +99,10 @@ export const addTeamMember = asyncHandler(
 
       const io = req.app.locals.io;
       io.to(userExists._id.toString()).emit("pushNotification", notification);
-      console.log("Notification emitted to user's room " + userExists._id.toString(), notification);
-
+      console.log(
+        "Notification emitted to user's room " + userExists._id.toString(),
+        notification
+      );
 
       res.status(201).json({ message: "successful", data: teamMember });
     } catch (error: any) {
@@ -115,7 +117,9 @@ export const addTeamMember = asyncHandler(
 export const joinTeam = asyncHandler(
   async (req: CustomRequest, res: Response) => {
     try {
-      const { team_id } = req.body;
+      const { team_id, user_id } = req.body;
+
+      const userId = user_id || req.user.id;
 
       if (!team_id.trim()) {
         res.status(400);
@@ -130,17 +134,16 @@ export const joinTeam = asyncHandler(
       }
 
       const memberRequest = await TeamMemberRequest.findOne({
-        user_id: req.user.id,
-        team_id: team_id
+        user_id: userId,
+        team_id: team_id,
       });
 
-      if (memberRequest && memberRequest.status === 'PENDING') {
+      if (memberRequest && memberRequest.status === "PENDING") {
         res.status(409);
         throw new Error("Member request already exists for that user.");
       }
 
-
-      if (req.user.id === teamExists.owner_id.toString()) {
+      if (userId === teamExists.owner_id.toString()) {
         res.status(400);
         throw new Error("You cannot add yourself to the team");
       }
@@ -151,7 +154,7 @@ export const joinTeam = asyncHandler(
         throw new Error("Team doesn't have an owner");
       }
 
-      const userExists = await User.findOne({ _id: { $in: [req.user.id] } });
+      const userExists = await User.findOne({ _id: { $in: [userId] } });
 
       if (!userExists) {
         res.status(400);
@@ -175,21 +178,24 @@ export const joinTeam = asyncHandler(
 
       const teamMemberRequest = await TeamMemberRequest.create({
         owner_id: teamExists.owner_id,
-        user_id: req.user.id,
+        user_id: userId,
         team_id: teamExists._id,
       });
 
-      const populatedUser = await User.findById({ _id: req.user.id }).populate({
-        path: 'profile',
-        select: 'firstName lastName username'
-      }) as PopulatedUser | null;
+      const populatedUser = (await User.findById({ _id: userId }).populate({
+        path: "profile",
+        select: "firstName lastName username",
+      })) as PopulatedUser | null;
 
       if (!populatedUser) {
         res.status(404);
         throw new Error("User not found");
       }
 
-      const username = populatedUser.profile.firstName && populatedUser.profile.lastName ? `${populatedUser.profile.firstName} ${populatedUser.profile.lastName}` : populatedUser.profile.username;
+      const username =
+        populatedUser.profile.firstName && populatedUser.profile.lastName
+          ? `${populatedUser.profile.firstName} ${populatedUser.profile.lastName}`
+          : populatedUser.profile.username;
       // Create notification for team owner
       const notification = await Notification.create({
         user: teamExists.owner_id,
@@ -201,8 +207,15 @@ export const joinTeam = asyncHandler(
       });
 
       const io = req.app.locals.io;
-      io.to(teamExists.owner_id.toString()).emit("pushNotification", notification);
-      console.log("Notification emitted to team owner's room " + teamExists.owner_id.toString(), notification);
+      io.to(teamExists.owner_id.toString()).emit(
+        "pushNotification",
+        notification
+      );
+      console.log(
+        "Notification emitted to team owner's room " +
+          teamExists.owner_id.toString(),
+        notification
+      );
 
       const emailTemplate = `<div>
         <p>Hi ${owner?.username},</p>
@@ -296,11 +309,13 @@ export const updateJoinRequest = asyncHandler(
         });
       }
 
-      const teamName = await Team.findById({ _id: memberRequest.team_id})
+      const teamName = await Team.findById({ _id: memberRequest.team_id });
 
       const notification = await Notification.create({
         user: memberRequest.user_id,
-        message: `Your request to join ${teamName?.name} has been ${status.toLowerCase()}.`,
+        message: `Your request to join ${
+          teamName?.name
+        } has been ${status.toLowerCase()}.`,
         reference: memberRequest.team_id,
         referenceModel: "Team",
         subreference: memberRequest._id,
@@ -308,9 +323,15 @@ export const updateJoinRequest = asyncHandler(
       });
 
       const io = req.app.locals.io;
-      io.to(memberRequest.user_id.toString()).emit("pushNotification", notification);
-      console.log("Notification emitted to user's room " + memberRequest.user_id.toString(), notification);
-
+      io.to(memberRequest.user_id.toString()).emit(
+        "pushNotification",
+        notification
+      );
+      console.log(
+        "Notification emitted to user's room " +
+          memberRequest.user_id.toString(),
+        notification
+      );
 
       const emailTemplate = `<div>
           <p>Hi,</p>
@@ -327,31 +348,34 @@ export const updateJoinRequest = asyncHandler(
   }
 );
 
-
 //@desc Delete team
 //@route DELETE /api/team-member?teamId=teamId&userId=userId
 //access private
 export const deleteTeamMember = asyncHandler(
   async (req: CustomRequest, res: Response) => {
     try {
-   
-      const { teamId, userId } = req.query
+      const { teamId, userId } = req.query;
 
       const teamMember = await TeamMember.findOne({
         user_id: userId,
-        team_id: teamId
+        team_id: teamId,
       });
       if (!teamMember) {
-        res.status(404).json({message: "Team member not found"});
-        return
+        res.status(404).json({ message: "Team member not found" });
+        return;
       }
       if (req.user.id !== teamMember.owner_id.toString()) {
-        res.status(403).json({message: "You do not have permission to remove the team member from the team."});
-        return
+        res
+          .status(403)
+          .json({
+            message:
+              "You do not have permission to remove the team member from the team.",
+          });
+        return;
       }
       await TeamMember.findByIdAndDelete(teamMember?._id);
 
-      const teamName = await Team.findById({ _id: teamMember.team_id})
+      const teamName = await Team.findById({ _id: teamMember.team_id });
 
       const notification = await Notification.create({
         user: teamMember.user_id,
@@ -363,15 +387,20 @@ export const deleteTeamMember = asyncHandler(
       });
 
       const io = req.app.locals.io;
-      io.to(teamMember.user_id.toString()).emit("pushNotification", notification);
-      console.log("Notification emitted to user's room " + teamMember.user_id.toString(), notification);
-
+      io.to(teamMember.user_id.toString()).emit(
+        "pushNotification",
+        notification
+      );
+      console.log(
+        "Notification emitted to user's room " + teamMember.user_id.toString(),
+        notification
+      );
 
       res.status(204).json({
-        message: "Team member removed successfully"
+        message: "Team member removed successfully",
       });
     } catch (error: any) {
-      res.status(500)
+      res.status(500);
       throw new Error(error);
     }
   }
@@ -383,28 +412,27 @@ export const deleteTeamMember = asyncHandler(
 export const leaveTeam = asyncHandler(
   async (req: CustomRequest, res: Response) => {
     try {
-  
       const teamMember = await TeamMember.findOne({
         user_id: req.user.id,
-        team_id: req.params.teamId
+        team_id: req.params.teamId,
       });
 
       if (!teamMember) {
-        res.status(400).json({message: "You do not belong to this team!"});
-        return
+        res.status(400).json({ message: "You do not belong to this team!" });
+        return;
       }
 
       if (teamMember.owner_id.toString() === req.user.id) {
-        res.status(400).json({message: "You cannot leave your own team!"});
-        return
+        res.status(400).json({ message: "You cannot leave your own team!" });
+        return;
       }
 
-      await TeamMember.findByIdAndDelete(teamMember?._id)
+      await TeamMember.findByIdAndDelete(teamMember?._id);
       res.status(204).json({
-        message: "You left the team successfully"
-      })
-    } catch (error:any) {
-      res.status(400)
+        message: "You left the team successfully",
+      });
+    } catch (error: any) {
+      res.status(400);
       throw new Error(error);
     }
   }
@@ -416,41 +444,46 @@ export const leaveTeam = asyncHandler(
 export const fetchTeamMemberRequests = asyncHandler(
   async (req: CustomRequest, res: Response) => {
     try {
-     
       const teamMemberRequests = await TeamMemberRequest.find({
-        team_id: req.params.teamId
+        team_id: req.params.teamId,
       });
 
-      const userIds:any = []
-      teamMemberRequests.map((request:any) => {
-        userIds.push(request.user_id)
-      })
+      const userIds: any = [];
+      teamMemberRequests.map((request: any) => {
+        userIds.push(request.user_id);
+      });
 
-      const userProfiles = await UserProfile.find({user_id: { $in: userIds }})
+      const userProfiles = await UserProfile.find({
+        user_id: { $in: userIds },
+      });
 
       // Merging requests with profile data
       const mergedRequests = teamMemberRequests.map((request: any) => {
-        const userProfile = userProfiles.find(profile => profile.user_id.toString() === request.user_id.toString());
+        const userProfile = userProfiles.find(
+          (profile) => profile.user_id.toString() === request.user_id.toString()
+        );
         // Only include specific fields from the profile
         const limitedProfile = userProfile
-        ? {
-            user_id: userProfile.user_id,
-            firstName: userProfile.firstName,
-            lastName: userProfile.lastName,
-            username: userProfile.username,
-            interests: userProfile.interests,
-            profile_picture: userProfile.profile_picture ? `${process.env.S3_BUCKET_PREFIX}${userProfile.profile_picture}` : null
-          }
-        : {};
+          ? {
+              user_id: userProfile.user_id,
+              firstName: userProfile.firstName,
+              lastName: userProfile.lastName,
+              username: userProfile.username,
+              interests: userProfile.interests,
+              profile_picture: userProfile.profile_picture
+                ? `${process.env.S3_BUCKET_PREFIX}${userProfile.profile_picture}`
+                : null,
+            }
+          : {};
         return {
           ...request._doc,
-          userProfile: limitedProfile
+          userProfile: limitedProfile,
         };
       });
 
-      res.status(200).json({ message: "successful", data: mergedRequests})
+      res.status(200).json({ message: "successful", data: mergedRequests });
     } catch (error: any) {
-      res.status(400)
+      res.status(400);
       throw new Error(error);
     }
   }
