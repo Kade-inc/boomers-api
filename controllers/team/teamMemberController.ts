@@ -119,7 +119,7 @@ export const joinTeam = asyncHandler(
     try {
       const { team_id, user_id } = req.body;
 
-      const userId = user_id || req.user.id;
+      const userId = user_id;
 
       if (!team_id.trim()) {
         res.status(400);
@@ -365,12 +365,10 @@ export const deleteTeamMember = asyncHandler(
         return;
       }
       if (req.user.id !== teamMember.owner_id.toString()) {
-        res
-          .status(403)
-          .json({
-            message:
-              "You do not have permission to remove the team member from the team.",
-          });
+        res.status(403).json({
+          message:
+            "You do not have permission to remove the team member from the team.",
+        });
         return;
       }
       await TeamMember.findByIdAndDelete(teamMember?._id);
