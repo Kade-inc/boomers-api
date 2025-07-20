@@ -11,6 +11,39 @@ import {
 
 const teamMemberRouter = express.Router();
 
+/**
+ * @openapi
+ * '/api/team-member/join':
+ *  post:
+ *     tags:
+ *     - Team Controller
+ *     summary: Join a team
+ *     requestBody:
+ *      required: true
+ *      content:
+ *        application/json:
+ *           schema:
+ *            type: object
+ *            required:
+ *              - team_id
+ *            properties:
+ *              team_id:
+ *                type: string
+ *                default: fjh98938434
+ *     responses:
+ *      201:
+ *        description: Created
+ *      400:
+ *        description: Bad Request
+ *      409:
+ *        description: Conflict
+ *      404:
+ *        description: Not Found
+ *      500:
+ *        description: Server Error
+ */
+teamMemberRouter.post("/join", joinTeam);
+
 teamMemberRouter.use(validateToken);
 
 /**
@@ -52,39 +85,6 @@ teamMemberRouter.post("/create", addTeamMember);
 
 /**
  * @openapi
- * '/api/team-member/join':
- *  post:
- *     tags:
- *     - Team Controller
- *     summary: Join a team
- *     requestBody:
- *      required: true
- *      content:
- *        application/json:
- *           schema:
- *            type: object
- *            required:
- *              - team_id
- *            properties:
- *              team_id:
- *                type: string
- *                default: fjh98938434
- *     responses:
- *      201:
- *        description: Created
- *      400:
- *        description: Bad Request
- *      409:
- *        description: Conflict
- *      404:
- *        description: Not Found
- *      500:
- *        description: Server Error
- */
-teamMemberRouter.post("/join", joinTeam);
-
-/**
- * @openapi
  * '/api/team-member/join/:id':
  *  patch:
  *     tags:
@@ -120,10 +120,10 @@ teamMemberRouter.post("/join", joinTeam);
  */
 teamMemberRouter.put("/join/:id", updateJoinRequest);
 
-teamMemberRouter.get("/requests/:teamId", fetchTeamMemberRequests)
+teamMemberRouter.get("/requests/:teamId", fetchTeamMemberRequests);
 
-teamMemberRouter.delete("/", deleteTeamMember)
+teamMemberRouter.delete("/", deleteTeamMember);
 
-teamMemberRouter.delete("/leave/:teamId", leaveTeam)
+teamMemberRouter.delete("/leave/:teamId", leaveTeam);
 
 export default teamMemberRouter;

@@ -4,13 +4,11 @@ import {
   deleteTeam,
   getAllTeams,
   getTeam,
-  getTeamRecommendations,
   updateTeam,
 } from "../../controllers/team/teamController";
 import validateToken from "../../middleware/validateTokenHandler";
 import dotenv from "dotenv";
 import multer from "multer";
-
 dotenv.config();
 
 // This will enable just storing the image in memory
@@ -19,7 +17,53 @@ const upload = multer({ storage: storage });
 
 const teamRouter = express.Router();
 
+
+/**
+ * @openapi
+ * '/api/teams':
+ *  post:
+ *     tags:
+ *     - Team Controller
+ *     summary: Get all teams
+ *     requestBody:
+ *      required: false
+ *     responses:
+ *      200:
+ *        description: Success
+ *      400:
+ *        description: Bad Request
+ *      409:
+ *        description: Conflict
+ *      404:
+ *        description: Not Found
+ *      500:
+ *        description: Server Error
+ */
+teamRouter.get("/", getAllTeams);
+
+/**
+ * @openapi
+ * '/api/teams/:id':
+ *  get:
+ *     tags:
+ *     - Team Controller
+ *     summary: Get a team
+ *     responses:
+ *      200:
+ *        description: Ok
+ *      400:
+ *        description: Bad Request
+ *      404:
+ *        description: Not Found
+ *      500:
+ *        description: Server Error
+ */
+teamRouter.get("/:id", getTeam);
+
+
 teamRouter.use(validateToken);
+
+
 
 /**
  * @openapi
@@ -66,28 +110,7 @@ teamRouter.use(validateToken);
  */
 teamRouter.post("/", upload.single("image"), createTeam);
 
-/**
- * @openapi
- * '/api/teams':
- *  post:
- *     tags:
- *     - Team Controller
- *     summary: Get all teams
- *     requestBody:
- *      required: false
- *     responses:
- *      200:
- *        description: Success
- *      400:
- *        description: Bad Request
- *      409:
- *        description: Conflict
- *      404:
- *        description: Not Found
- *      500:
- *        description: Server Error
- */
-teamRouter.get("/", getAllTeams);
+
 
 /**
  * @openapi
@@ -148,66 +171,8 @@ teamRouter.put("/:id", upload.single("image"), updateTeam);
  */
 teamRouter.delete("/:id", deleteTeam);
 
-/**
- * @openapi
- * '/api/teams/recommendations':
- *  post:
- *     tags:
- *     - Team Controller
- *     summary: Get recommendations
- *     requestBody:
- *      required: false
- *      content:
- *        application/json:
- *           schema:
- *            type: object
- *            required:
- *              - name
- *              - audience
- *              - category
- *              - teamUserName
- *            properties:
- *              name:
- *                type: string
- *                default: thefunky Bunch
- *              audience:
- *                type: array
- *                default: ['Developers', 'Farmers']
- *              category:
- *                type: array
- *                default: ['Software']
- *              teamUserName:
- *                type: string
- *                default: thefunkyBunch
- *     responses:
- *      200:
- *        description: Success
- *      400:
- *        description: Bad Request
- *      404:
- *        description: Not Found
- *      500:
- *        description: Server Error
- */
-teamRouter.get("/recommendations", getTeamRecommendations);
 
-/**
- * @openapi
- * '/api/teams/:id':
- *  get:
- *     tags:
- *     - Team Controller
- *     summary: Get a team
- *     responses:
- *      200:
- *        description: Ok
- *      400:
- *        description: Bad Request
- *      404:
- *        description: Not Found
- *      500:
- *        description: Server Error
- */
-teamRouter.get("/:id", getTeam);
+
+
 
 export default teamRouter;

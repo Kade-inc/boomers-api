@@ -20,7 +20,15 @@ dotenv.config();
 //access public
 const registerUser = asyncHandler(async (req: Request, res: Response) => {
   try {
-    const { phoneNumber, email, password, username, countryCode, source = 'web' } = req.body;
+    const {
+      phoneNumber,
+      email,
+      password,
+      username,
+      countryCode,
+      teamId,
+      source = "web",
+    } = req.body;
 
     if (!email && !phoneNumber) {
       res.status(400);
@@ -128,12 +136,16 @@ const registerUser = asyncHandler(async (req: Request, res: Response) => {
 
       let verificationLink;
       if (source === "mobile") {
-        verificationLink = `exp://localhost:8081/--/verificationSuccess?email=${email}&verificationCode=${unhashedCode}`
-        console.log("VERIFICATION LINK: ", verificationLink)
+        verificationLink = `exp://localhost:8081/--/verificationSuccess?email=${email}&verificationCode=${unhashedCode}`;
+        console.log("VERIFICATION LINK: ", verificationLink);
       } else {
-        verificationLink = `${process.env.FRONTEND_URL}/signup-verification?email=${email}&verificationCode=${unhashedCode}`
+        if (teamId) {
+          verificationLink = `${process.env.FRONTEND_URL}/signup-verification?email=${email}&verificationCode=${unhashedCode}&teamId=${teamId}`;
+        } else {
+          verificationLink = `${process.env.FRONTEND_URL}/signup-verification?email=${email}&verificationCode=${unhashedCode}`;
+        }
       }
-      
+
       if (email) {
         const emailTemplate = `<div>
         <p>Hi ${username.trim()},</p>
@@ -181,7 +193,7 @@ export const verifyUser = asyncHandler(async (req: Request, res: Response) => {
       }
     }
 
-    console.log("VERIFICATION CODE: ", verificationCode)
+    console.log("VERIFICATION CODE: ", verificationCode);
     const isCorrect = await bcrypt.compare(
       verificationCode.toString(),
       hashedVerificationCode[0].code
@@ -230,7 +242,12 @@ export const verifyUser = asyncHandler(async (req: Request, res: Response) => {
               profile: userProfile._id,
             });
           }
-          res.status(200).json({ successful: true, message: "User verified!" });
+          res.status(200).json({
+            message: "User verified!",
+            data: {
+              _id: user[0]._id,
+            },
+          });
         }
       } else {
         res.status(400).json({ error: "User code invalid" });
@@ -370,7 +387,7 @@ export const getUsers = asyncHandler(async (req: Request, res: Response) => {
         ],
       }).select("_id user_id"); // user_id references the User
 
-      const profileUserIds = matchingProfiles.map(profile => profile.user_id);
+      const profileUserIds = matchingProfiles.map((profile) => profile.user_id);
 
       // 2. Find users whose username matches or whose _id is in profileUserIds
       users = await User.find({
@@ -389,12 +406,12 @@ export const getUsers = asyncHandler(async (req: Request, res: Response) => {
     }
 
     // Post-process to add S3 prefix if necessary.
-    users = users.map(user => {
+    users = users.map((user) => {
       const profile = user.profile as {
         firstName?: string;
         lastName?: string;
         profile_picture?: string | null;
-      }
+      };
       if (profile && profile.profile_picture) {
         profile.profile_picture = `${bucketPrefix}${profile.profile_picture}`;
       }
@@ -403,11 +420,11 @@ export const getUsers = asyncHandler(async (req: Request, res: Response) => {
 
     res.json(users);
   } catch (error: any) {
-    res.status(500).json({ message: "Error searching for users", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Error searching for users", error: error.message });
   }
 });
-
-
 
 //@desc Get current user info
 //@route GET /api/users
@@ -423,7 +440,7 @@ export const currentUser = asyncHandler(
 //access public
 
 export const forgotPassword = async (req: Request, res: Response) => {
-  const { email, source = 'web' } = req.body;
+  const { email, source = "web" } = req.body;
   try {
     // Check if the user exists in the database:
     const user = await User.findOne({ email });
@@ -431,9 +448,11 @@ export const forgotPassword = async (req: Request, res: Response) => {
       return res.status(404).json({ message: "User does not exist" });
     }
 
-    if (source === 'mobile') {
+    if (source === "mobile") {
       // Generate a 6-digit verification code
-      const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+      const verificationCode = Math.floor(
+        100000 + Math.random() * 900000
+      ).toString();
       const saltRounds = 10;
 
       // Generate salt and hash the code
@@ -442,7 +461,7 @@ export const forgotPassword = async (req: Request, res: Response) => {
 
       // Save or update the verification code
       const userToken = await ResetPasswordToken.findOne({
-        userId: user._id
+        userId: user._id,
       });
 
       if (userToken) {
@@ -473,13 +492,18 @@ export const forgotPassword = async (req: Request, res: Response) => {
           <p>Please use this code to reset your password</p>
         </div>`;
 
-      sendMail(transporter, email, emailTemplate, "Password Reset Verification Code");
-      
+      sendMail(
+        transporter,
+        email,
+        emailTemplate,
+        "Password Reset Verification Code"
+      );
+
       return res.status(200).json({
         message: "Verification code sent successfully",
         data: {
-          message: "Please check your email for the verification code"
-        }
+          message: "Please check your email for the verification code",
+        },
       });
     } else {
       // Original web flow with reset token
@@ -491,7 +515,7 @@ export const forgotPassword = async (req: Request, res: Response) => {
       const hash = await bcrypt.hash(resetToken, salt);
 
       const userToken = await ResetPasswordToken.findOne({
-        userId: user._id
+        userId: user._id,
       });
 
       if (userToken) {
@@ -522,12 +546,12 @@ export const forgotPassword = async (req: Request, res: Response) => {
         </div>`;
 
       sendMail(transporter, email, emailTemplate, "Forgot Password");
-      
+
       return res.status(200).json({
         message: "Reset password email sent successfully",
         data: {
-          message: `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}&id=${user._id}`
-        }
+          message: `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}&id=${user._id}`,
+        },
       });
     }
   } catch (error: any) {
@@ -616,7 +640,9 @@ export const verifyResetToken = async (req: Request, res: Response) => {
     // Find the reset token for this user
     const resetToken = await ResetPasswordToken.findOne({ userId: user._id });
     if (!resetToken) {
-      return res.status(404).json({ message: "No reset token found for this user" });
+      return res
+        .status(404)
+        .json({ message: "No reset token found for this user" });
     }
 
     // Check if token has expired (24 hours)
@@ -629,7 +655,10 @@ export const verifyResetToken = async (req: Request, res: Response) => {
     }
 
     // Verify the code matches
-    const isValidCode = await bcrypt.compare(verificationCode, resetToken.token);
+    const isValidCode = await bcrypt.compare(
+      verificationCode,
+      resetToken.token
+    );
     if (!isValidCode) {
       return res.status(400).json({ message: "Invalid verification code" });
     }
@@ -638,10 +667,9 @@ export const verifyResetToken = async (req: Request, res: Response) => {
     return res.status(200).json({
       message: "Token is valid",
       data: {
-        userId: user._id
-      }
+        userId: user._id,
+      },
     });
-
   } catch (error: any) {
     console.error("Verify reset token error:", error);
     return res.status(500).json({ message: "Error verifying reset token" });
