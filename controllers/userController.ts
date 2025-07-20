@@ -147,13 +147,70 @@ const registerUser = asyncHandler(async (req: Request, res: Response) => {
       }
 
       if (email) {
-        const emailTemplate = `<div>
-        <p>Hi ${username.trim()},</p>
-        <p>Thank you for signing up to Boomers.</p>
+        const emailTemplate = `
+        <!DOCTYPE html>
+        
+<html>
+  <head>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: Arial, sans-serif;
+        background-color: #f4f4f4;
+      }
+      .email-container {
+        max-width: 600px;
+        margin: auto;
+        background: #ffffff;
+        border-radius: 8px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        overflow: hidden;
+      }
+      .header {
+        background: #F8B500;
+        color: #393E46;
+        text-align: center;
+        padding: 20px;
+        font-size: 24px;
+        font-family: 'Montserrat', sans-serif;
+      }
+      .body {
+        padding: 20px;
+        color: #333333;
+        line-height: 1.6;
+      }
+      .footer {
+        text-align: center;
+        background: #eeeeee;
+        padding: 10px;
+        font-size: 12px;
+        color: #777777;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="email-container">
+      
+      <div class="header">
+        Welcome to CraftHyve!
+      </div>
+      <div class="body">
+            <p>Hi ${username.trim()},</p>
+       <p>Thank you for signing up to Boomers.</p>
         <p>Click on the link below to verify your account: </p>
         <p><a href="${verificationLink}" target="_blank">Verify Account</a></p>
         <p>This link will expire in 24 hours.</p>
-        </div>`;
+      </div>
+      <div class="footer">
+        © 2025 KADE. All Rights Reserved.
+      </div>
+    </div>
+  </body>
+</html>`;
         sendMail(transporter, email, emailTemplate);
       }
     } else {
