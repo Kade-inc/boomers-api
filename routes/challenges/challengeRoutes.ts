@@ -43,26 +43,6 @@ import {
 } from "../../controllers/team/teamChallengeController";
 const challengeRouter = express.Router();
 
-
-/**
- * @openapi
- * '/api/challenges/:id/solutions/:solutionId':
- *  post:
- *     tags:
- *     - Challenge Solution Controller
- *     summary: Get challenge solution
- *     responses:
- *      200:
- *        description: Success
- *      404:
- *        description: Not Found
- *      500:
- *        description: Server Error
- */
-challengeRouter.get("/:id/solutions/:solutionId", getChallengeSolution);
-
-challengeRouter.use(validateToken);
-
 /**
  * @openapi
  * '/api/challenges':
@@ -100,27 +80,22 @@ challengeRouter.get("/", getAllChallenges);
  *        description: Server Error
  */
 challengeRouter.get("/:id", getChallenge);
-
 /**
  * @openapi
- * '/api/challenges/:id/solutions':
+ * '/api/challenges/:id/solutions/:solutionId':
  *  post:
  *     tags:
  *     - Challenge Solution Controller
- *     summary: Creates challenge solution
+ *     summary: Get challenge solution
  *     responses:
- *      201:
- *        description: Created
- *      400:
- *        description: Bad Request
+ *      200:
+ *        description: Success
  *      404:
  *        description: Not Found
- *      409:
- *        description: Conflict
  *      500:
  *        description: Server Error
  */
-challengeRouter.post("/:id/solutions", postChallengeSolution);
+challengeRouter.get("/:id/solutions/:solutionId", getChallengeSolution);
 
 /**
  * @openapi
@@ -139,37 +114,63 @@ challengeRouter.post("/:id/solutions", postChallengeSolution);
  */
 challengeRouter.get("/:id/solutions", getAllChallengeSolutions);
 
-
-
 /**
  * @openapi
- * '/api/challenges/:id/solutions/:solutionId':
- *  post:
+ * '/api/challenges/:id/solutions/:solutionId/comments':
+ *  get:
  *     tags:
  *     - Challenge Solution Controller
- *     summary: Patch challenge solution
+ *     summary: Get solution comments
  *     responses:
  *      200:
  *        description: Success
- *      403:
- *        description: Forbidden
+ *      400:
+ *        description: Bad Request
  *      404:
  *        description: Not Found
+ *      401:
+ *        description: Unauthorized
  *      500:
  *        description: Server Error
  */
-challengeRouter.patch("/:id/solutions/:solutionId", updateChallengeSolution);
+challengeRouter.get("/:id/solutions/:solutionId/comments", getSolutionComments);
 
 /**
  * @openapi
- * '/api/challenges/:id/solutions/:solutionId/steps':
- *  post:
+ * '/api/challenges/:id/solutions/:solutionId/comments/:commentId':
+ *  get:
  *     tags:
  *     - Challenge Solution Controller
- *     summary: Add step to solution
+ *     summary: Get solution comment
  *     responses:
- *      201:
- *        description: Created
+ *      200:
+ *        description: Success
+ *      400:
+ *        description: Bad Request
+ *      404:
+ *        description: Not Found
+ *      401:
+ *        description: Unauthorized
+ *      500:
+ *        description: Server Error
+ */
+challengeRouter.get(
+  "/:id/solutions/:solutionId/comments/:commentId",
+  getSolutionComment
+);
+
+/**
+ * @openapi
+ * '/api/challenges/:id/comments':
+ *  get:
+ *     tags:
+ *     - Team Challenge Controller
+ *     summary: Get challenge comments
+ *     responses:
+ *      200:
+ *        description: Success
+ *      400:
+ *        description: Bad Request
  *      403:
  *        description: Forbidden
  *      404:
@@ -177,7 +178,71 @@ challengeRouter.patch("/:id/solutions/:solutionId", updateChallengeSolution);
  *      500:
  *        description: Server Error
  */
-challengeRouter.post("/:id/solutions/:solutionId/steps", addChallengeStep);
+challengeRouter.get("/:id/comments", getChallengeComments);
+
+/**
+ * @openapi
+ * '/api/challenges/:id/comments/:commentId':
+ *  get:
+ *     tags:
+ *     - Team Challenge Controller
+ *     summary: Get challenge comment
+ *     responses:
+ *      200:
+ *        description: Success
+ *      400:
+ *        description: Bad Request
+ *      403:
+ *        description: Forbidden
+ *      404:
+ *        description: Not Found
+ *      500:
+ *        description: Server Error
+ */
+challengeRouter.get("/:id/comments/:commentId", getChallengeComment);
+
+/**
+ * @openapi
+ * '/api/challenges/:id/solutions/:solutionId/rating':
+ *  post:
+ *     tags:
+ *     - Challenge Solution Controller
+ *     summary: Get solution ratings
+ *     responses:
+ *      200:
+ *        description: Success
+ *      400:
+ *        description: Bad Request
+ *      404:
+ *        description: Not Found
+ *      401:
+ *        description: Unauthorized
+ *      500:
+ *        description: Server Error
+ */
+challengeRouter.get("/:id/solutions/:solutionId/rating", getSolutionRatings);
+
+/**
+ * @openapi
+ * '/api/challenges/:id/solutions/:solutionId/rating/:ratingId':
+ *  get:
+ *     tags:
+ *     - Challenge Solution Controller
+ *     summary: Get solution rating
+ *     responses:
+ *      200:
+ *        description: Success
+ *      400:
+ *        description: Bad Request
+ *      404:
+ *        description: Not Found
+ *      500:
+ *        description: Server Error
+ */
+challengeRouter.get(
+  "/:id/solutions/:solutionId/rating/:ratingId",
+  getSolutionRating
+);
 
 /**
  * @openapi
@@ -219,6 +284,111 @@ challengeRouter.get(
   "/:id/solutions/:solutionId/steps/:stepId",
   getChallengeStep
 );
+
+/**
+ * @openapi
+ * '/api/challenges/:id/solutions/:solutionId/steps/:stepId/comments':
+ *  get:
+ *     tags:
+ *     - Challenge Step Controller
+ *     summary: Get solution step comments
+ *     responses:
+ *      200:
+ *        description: Success
+ *      400:
+ *        description: Bad Request
+ *      404:
+ *        description: Not Found
+ *      500:
+ *        description: Server Error
+ */
+challengeRouter.get(
+  "/:id/solutions/:solutionId/steps/:stepId/comments",
+  getSolutionStepComments
+);
+
+/**
+ * @openapi
+ * '/api/challenges/:id/solutions/:solutionId/steps/:stepId/comments/:commentId':
+ *  get:
+ *     tags:
+ *     - Challenge Step Controller
+ *     summary: Get solution step comment
+ *     responses:
+ *      200:
+ *        description: Success
+ *      400:
+ *        description: Bad Request
+ *      404:
+ *        description: Not Found
+ *      500:
+ *        description: Server Error
+ */
+challengeRouter.get(
+  "/:id/solutions/:solutionId/steps/:stepId/comments/:commentId",
+  getSolutionStepComment
+);
+
+challengeRouter.use(validateToken);
+
+/**
+ * @openapi
+ * '/api/challenges/:id/solutions':
+ *  post:
+ *     tags:
+ *     - Challenge Solution Controller
+ *     summary: Creates challenge solution
+ *     responses:
+ *      201:
+ *        description: Created
+ *      400:
+ *        description: Bad Request
+ *      404:
+ *        description: Not Found
+ *      409:
+ *        description: Conflict
+ *      500:
+ *        description: Server Error
+ */
+challengeRouter.post("/:id/solutions", postChallengeSolution);
+
+/**
+ * @openapi
+ * '/api/challenges/:id/solutions/:solutionId':
+ *  post:
+ *     tags:
+ *     - Challenge Solution Controller
+ *     summary: Patch challenge solution
+ *     responses:
+ *      200:
+ *        description: Success
+ *      403:
+ *        description: Forbidden
+ *      404:
+ *        description: Not Found
+ *      500:
+ *        description: Server Error
+ */
+challengeRouter.patch("/:id/solutions/:solutionId", updateChallengeSolution);
+
+/**
+ * @openapi
+ * '/api/challenges/:id/solutions/:solutionId/steps':
+ *  post:
+ *     tags:
+ *     - Challenge Solution Controller
+ *     summary: Add step to solution
+ *     responses:
+ *      201:
+ *        description: Created
+ *      403:
+ *        description: Forbidden
+ *      404:
+ *        description: Not Found
+ *      500:
+ *        description: Server Error
+ */
+challengeRouter.post("/:id/solutions/:solutionId/steps", addChallengeStep);
 
 /**
  * @openapi
@@ -333,51 +503,6 @@ challengeRouter.put(
 
 /**
  * @openapi
- * '/api/challenges/:id/solutions/:solutionId/comments':
- *  get:
- *     tags:
- *     - Challenge Solution Controller
- *     summary: Get solution comments
- *     responses:
- *      200:
- *        description: Success
- *      400:
- *        description: Bad Request
- *      404:
- *        description: Not Found
- *      401:
- *        description: Unauthorized
- *      500:
- *        description: Server Error
- */
-challengeRouter.get("/:id/solutions/:solutionId/comments", getSolutionComments);
-
-/**
- * @openapi
- * '/api/challenges/:id/solutions/:solutionId/comments/:commentId':
- *  get:
- *     tags:
- *     - Challenge Solution Controller
- *     summary: Get solution comment
- *     responses:
- *      200:
- *        description: Success
- *      400:
- *        description: Bad Request
- *      404:
- *        description: Not Found
- *      401:
- *        description: Unauthorized
- *      500:
- *        description: Server Error
- */
-challengeRouter.get(
-  "/:id/solutions/:solutionId/comments/:commentId",
-  getSolutionComment
-);
-
-/**
- * @openapi
  * '/api/challenges/:id/solutions/:solutionId/comments/:commentId':
  *  get:
  *     tags:
@@ -444,48 +569,6 @@ challengeRouter.put("/:id/comments/:commentId", updateChallengeComment);
 
 /**
  * @openapi
- * '/api/challenges/:id/comments':
- *  get:
- *     tags:
- *     - Team Challenge Controller
- *     summary: Get challenge comments
- *     responses:
- *      200:
- *        description: Success
- *      400:
- *        description: Bad Request
- *      403:
- *        description: Forbidden
- *      404:
- *        description: Not Found
- *      500:
- *        description: Server Error
- */
-challengeRouter.get("/:id/comments", getChallengeComments);
-
-/**
- * @openapi
- * '/api/challenges/:id/comments/:commentId':
- *  get:
- *     tags:
- *     - Team Challenge Controller
- *     summary: Get challenge comment
- *     responses:
- *      200:
- *        description: Success
- *      400:
- *        description: Bad Request
- *      403:
- *        description: Forbidden
- *      404:
- *        description: Not Found
- *      500:
- *        description: Server Error
- */
-challengeRouter.get("/:id/comments/:commentId", getChallengeComment);
-
-/**
- * @openapi
  * '/api/challenges/:id/comments/:commentId':
  *  delete:
  *     tags:
@@ -527,27 +610,6 @@ challengeRouter.delete("/:id/comments/:commentId", deleteChallengeComment);
  *        description: Server Error
  */
 challengeRouter.post("/:id/solutions/:solutionId/rating", postSolutionRating);
-
-/**
- * @openapi
- * '/api/challenges/:id/solutions/:solutionId/rating':
- *  post:
- *     tags:
- *     - Challenge Solution Controller
- *     summary: Get solution ratings
- *     responses:
- *      200:
- *        description: Success
- *      400:
- *        description: Bad Request
- *      404:
- *        description: Not Found
- *      401:
- *        description: Unauthorized
- *      500:
- *        description: Server Error
- */
-challengeRouter.get("/:id/solutions/:solutionId/rating", getSolutionRatings);
 
 /**
  * @openapi
@@ -651,50 +713,6 @@ challengeRouter.put(
 
 /**
  * @openapi
- * '/api/challenges/:id/solutions/:solutionId/steps/:stepId/comments':
- *  get:
- *     tags:
- *     - Challenge Step Controller
- *     summary: Get solution step comments
- *     responses:
- *      200:
- *        description: Success
- *      400:
- *        description: Bad Request
- *      404:
- *        description: Not Found
- *      500:
- *        description: Server Error
- */
-challengeRouter.get(
-  "/:id/solutions/:solutionId/steps/:stepId/comments",
-  getSolutionStepComments
-);
-
-/**
- * @openapi
- * '/api/challenges/:id/solutions/:solutionId/steps/:stepId/comments/:commentId':
- *  get:
- *     tags:
- *     - Challenge Step Controller
- *     summary: Get solution step comment
- *     responses:
- *      200:
- *        description: Success
- *      400:
- *        description: Bad Request
- *      404:
- *        description: Not Found
- *      500:
- *        description: Server Error
- */
-challengeRouter.get(
-  "/:id/solutions/:solutionId/steps/:stepId/comments/:commentId",
-  getSolutionStepComment
-);
-
-/**
- * @openapi
  * '/api/challenges/:id/solutions/:solutionId/steps/:stepId/comments/:commentId':
  *  delete:
  *     tags:
@@ -717,31 +735,6 @@ challengeRouter.delete(
   deleteSolutionStepComment
 );
 
-challengeRouter.delete(
-  "/",
-  deleteMultipleChallengesByUser
-);
-
-/**
- * @openapi
- * '/api/challenges/:id/solutions/:solutionId/rating/:ratingId':
- *  get:
- *     tags:
- *     - Challenge Solution Controller
- *     summary: Get solution rating
- *     responses:
- *      200:
- *        description: Success
- *      400:
- *        description: Bad Request
- *      404:
- *        description: Not Found
- *      500:
- *        description: Server Error
- */
-challengeRouter.get(
-  "/:id/solutions/:solutionId/rating/:ratingId",
-  getSolutionRating
-);
+challengeRouter.delete("/", deleteMultipleChallengesByUser);
 
 export default challengeRouter;
