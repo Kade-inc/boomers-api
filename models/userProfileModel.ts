@@ -70,11 +70,11 @@ const userProfileSchema = new Schema<IUserProfile>(
     },
     job: {
       type: String,
-      default: null
+      default: null,
     },
     location: {
       type: String,
-      default: null
+      default: null,
     },
     city: {
       type: String,
@@ -94,28 +94,32 @@ const userProfileSchema = new Schema<IUserProfile>(
       type: Number,
       default: null,
     },
-    locationGeo: {
-      type: {
-        type: String,
-        enum: ["Point"],
-        default: "Point",
-      },
-      // [longitude, latitude]
-      coordinates: {
-        type: [Number],
-        default: null,
-      },
-    },
+    // locationGeo: {
+    //   type: {
+    //     type: String,
+    //     enum: ["Point"],
+    //     default: "Point",
+    //   },
+    //   // [longitude, latitude]
+    //   coordinates: {
+    //     type: [Number],
+    //     default: null,
+    //   },
+    // },
   },
   {
     timestamps: true,
   }
 );
 
-userProfileSchema.index({ firstName: "text", lastName: "text", username: "text", });
+userProfileSchema.index({
+  firstName: "text",
+  lastName: "text",
+  username: "text",
+});
 
 // 2dsphere index on locationGeo for geospatial queries:
-userProfileSchema.index({ locationGeo: "2dsphere" });
+// userProfileSchema.index({ locationGeo: "2dsphere" });
 
 const UserProfile = model<IUserProfile>("UserProfile", userProfileSchema);
 

@@ -177,16 +177,27 @@ export const updateUserProfile = asyncHandler(async (req: any, res) => {
 
       await s3.send(command);
 
-      await UserProfile.findByIdAndUpdate(
-        profile._id,
-        {
-          profile_picture: imageKey,
-        },
-        {
-          new: true,
+      // If only uploading an image, just update the profile picture
+      if (!req.body || Object.keys(req.body).length === 0) {
+        const updatedProfile = await UserProfile.findByIdAndUpdate(
+          profile._id,
+          {
+            profile_picture: imageKey,
+          },
+          {
+            new: true,
+          }
+        );
+
+        if (updatedProfile) {
+          updatedProfile.profile_picture = updatedProfile?.profile_picture ? `${process.env.S3_BUCKET_PREFIX}${updatedProfile.profile_picture}` : null
         }
-      );
-      
+        
+        res.status(200).json(updatedProfile);
+        return;
+      }
+
+      // If uploading image with other data, update everything
       let updatedProfile = await UserProfile.findByIdAndUpdate(
         profile._id,
         {
@@ -194,7 +205,14 @@ export const updateUserProfile = asyncHandler(async (req: any, res) => {
           lastName: updateProfileBody.lastName,
           phoneNumber: updateProfileBody.phoneNumber,
           bio: updateProfileBody.bio,
-          interests: JSON.parse(updateProfileBody.interests),
+          interests: updateProfileBody.interests ? (() => {
+            try {
+              return JSON.parse(updateProfileBody.interests);
+            } catch (error) {
+              console.error('Error parsing interests JSON:', error);
+              return profile.interests;
+            }
+          })() : profile.interests,
           gender: updateProfileBody.gender,
           profile_picture: imageKey,
           job: updateProfileBody.job,
@@ -225,7 +243,14 @@ export const updateUserProfile = asyncHandler(async (req: any, res) => {
         lastName: updateProfileBody.lastName,
         phoneNumber: updateProfileBody.phoneNumber,
         bio: updateProfileBody.bio,
-        interests: updateProfileBody.interests ? JSON.parse(updateProfileBody.interests) : profile.interests,
+        interests: updateProfileBody.interests ? (() => {
+          try {
+            return JSON.parse(updateProfileBody.interests);
+          } catch (error) {
+            console.error('Error parsing interests JSON:', error);
+            return profile.interests;
+          }
+        })() : profile.interests,
         gender: updateProfileBody.gender,
         job: updateProfileBody.job,
         location: updateProfileBody.location,

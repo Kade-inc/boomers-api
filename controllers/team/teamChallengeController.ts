@@ -98,17 +98,15 @@ export const createTeamChallenge = asyncHandler(
 export const getAllTeamChallenges = asyncHandler(
   async (req: CustomRequest, res: Response) => {
     try {
-      const team = await Team.findById({ _id: req.params.id });
+      const team = await Team.findById({ _id: req.params.teamId });
 
       if (!team) {
         res.status(404).json({ message: "Team not found" });
       } else {
         const challenges = await TeamChallenge.find({
-          team_id: req.params.id,
+          team_id: req.params.teamId,
         });
         
-
-   
           res.status(200).json({ message: "successful", data: challenges });
         
       }
