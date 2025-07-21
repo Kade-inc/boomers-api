@@ -23,6 +23,7 @@ interface IUserProfile {
     type: "Point";
     coordinates: [number, number]; // [longitude, latitude]
   };
+  website?: string;
 }
 
 const userProfileSchema = new Schema<IUserProfile>(
@@ -106,6 +107,10 @@ const userProfileSchema = new Schema<IUserProfile>(
     //     default: null,
     //   },
     // },
+    website: {
+      type: String,
+      default: null,
+    },
   },
   {
     timestamps: true,
