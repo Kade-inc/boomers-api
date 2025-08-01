@@ -48,7 +48,7 @@ export const createTeamChallenge = asyncHandler(
         reward,
       } = req.body;
 
-      const teamExists = await Team.findById({ _id: req.params.id });
+      const teamExists = await Team.findById(req.params.id);
 
       if (!teamExists) {
         res.status(404);
@@ -515,7 +515,7 @@ export const deleteChallengeComment = asyncHandler(
 export const createTeamChallengeV2 = asyncHandler(
   async (req: CustomRequest, res: Response) => {
     try {
-      const teamExists = await Team.findById({ _id: req.params.id });
+      const teamExists = await Team.findById(req.params.teamId);
 
       if (!teamExists) {
         res.status(404);
@@ -536,7 +536,7 @@ export const createTeamChallengeV2 = asyncHandler(
 
       const challenge = await TeamChallenge.create({
         owner_id: req.user.id,
-        team_id: req.params.id,
+        team_id: req.params.teamId,
         valid: false
       });
       res.status(201).json({ message: "success", data: challenge });
