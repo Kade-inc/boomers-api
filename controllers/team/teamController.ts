@@ -19,6 +19,21 @@ import User from "../../models/userModel";
 
 const randomImageName = (bytes = 32) =>
   crypto.randomBytes(bytes).toString("hex");
+
+const generateTeamUsername = (teamName: string): string => {
+  // Clean the team name: remove special characters, convert to lowercase, replace spaces with hyphens
+  const cleanName = teamName
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '') // Remove special characters except spaces and hyphens
+    .replace(/\s+/g, '-') // Replace spaces with hyphens
+    .replace(/-+/g, '-') // Replace multiple hyphens with single hyphen
+    .trim();
+  
+  // Generate random number between 1 and 999999
+  const randomNumber = Math.floor(Math.random() * 999999) + 1;
+  
+  return `${cleanName}-${randomNumber}`;
+};
 const bucketName: any = process.env.BUCKET_NAME;
 const bucketRegion: any = process.env.BUCKET_REGION;
 const accessKey: any = process.env.ACCESS_KEY;
@@ -38,18 +53,31 @@ const s3 = new S3Client({
 export const createTeam = asyncHandler(
   async (req: CustomRequest, res: Response) => {
     try {
-      const { name, teamUsername, domain, subdomain, subdomainTopics, teamColor } =
+      const { name, domain, subdomain, subdomainTopics, teamColor } =
         req.body;
       if (!name.trim() || !domain.trim()) {
         res.status(400);
         throw new Error("Please put name and domain");
       }
 
-      const teamExists = await Team.findOne({ teamUsername });
-
-      if (teamExists) {
+      // Generate teamUsername from team name
+      let teamUsername = generateTeamUsername(name);
+      
+      // Check if the generated username already exists, if so, generate a new one
+      let attempts = 0;
+      const maxAttempts = 10;
+      while (attempts < maxAttempts) {
+        const teamExists = await Team.findOne({ teamUsername });
+        if (!teamExists) {
+          break; // Username is unique, proceed
+        }
+        teamUsername = generateTeamUsername(name); // Generate new username
+        attempts++;
+      }
+      
+      if (attempts >= maxAttempts) {
         res.status(409);
-        throw new Error("Team already exists. Try a different name/nickname.");
+        throw new Error("Unable to generate unique team username. Please try again.");
       }
 
       const domainExists = await TeamDomain.findOne({ name: domain });
