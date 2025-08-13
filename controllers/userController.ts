@@ -8,6 +8,7 @@ import UserVerificationCode from "../models/userVerificationCodeModel";
 import nodemailer from "nodemailer";
 import dotenv from "dotenv";
 import UserProfile from "../models/userProfileModel";
+import Role from "../models/roleModel";
 import { CustomRequest } from "../middleware/validateTokenHandler";
 import ResetPasswordToken from "../models/resetPasswordTokenModel";
 import Joi from "joi";
@@ -376,6 +377,10 @@ export const getUsers = asyncHandler(async (req: Request, res: Response) => {
     const bucketPrefix = process.env.S3_BUCKET_PREFIX || "";
     let users;
 
+    // Find the superadmin role to exclude it
+    const superadminRole = await Role.findOne({ name: "superadmin" });
+    const excludeRoleCondition = superadminRole ? { role: { $ne: superadminRole._id } } : {};
+
     if (search) {
       const regex = new RegExp(search.toString(), "i");
 
@@ -389,18 +394,23 @@ export const getUsers = asyncHandler(async (req: Request, res: Response) => {
 
       const profileUserIds = matchingProfiles.map((profile) => profile.user_id);
 
-      // 2. Find users whose username matches or whose _id is in profileUserIds
+      // 2. Find users whose username matches or whose _id is in profileUserIds, excluding superadmins
       users = await User.find({
-        $or: [
-          { username: { $regex: regex } },
-          { _id: { $in: profileUserIds } },
+        $and: [
+          {
+            $or: [
+              { username: { $regex: regex } },
+              { _id: { $in: profileUserIds } },
+            ],
+          },
+          excludeRoleCondition,
         ],
       })
         .populate("profile", "firstName lastName profile_picture")
         .lean();
     } else {
-      // No search term: just return all users.
-      users = await User.find({})
+      // No search term: just return all users, excluding superadmins.
+      users = await User.find(excludeRoleCondition)
         .populate("profile", "firstName lastName profile_picture")
         .lean();
     }
