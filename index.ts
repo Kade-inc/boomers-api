@@ -93,20 +93,19 @@ io.on("connection", (socket) => {
 });
 
 
-// server.listen(port, () => {
-//   console.log(`Server running on http://localhost:${port}`);
+server.listen(port, () => {
+  console.log(`Server running on http://localhost:${port}`);
  
-// });
+});
 
-server.listen(
-  {
-    port: Number(port),
-    host: "0.0.0.0",
-  },
-  () => {
-    console.log(`Server running on http://0.0.0.0:${port}`);
-  }
-);
+// server.listen(
+//   {
+//     port: Number(port),
+//   },
+//   () => {
+//     console.log(`Server running on http://0.0.0.0:${port}`);
+//   }
+// );
 
 
 swaggerDocs(app, port);
