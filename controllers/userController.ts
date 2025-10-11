@@ -686,6 +686,34 @@ export const verifyResetToken = async (req: Request, res: Response) => {
   }
 };
 
+export const addUserPushToken = asyncHandler(
+  async (req: CustomRequest, res: Response) => {
+    try {
+      const { pushToken } = req.body;
+
+      const user = await User.findByIdAndUpdate(
+        req.user.id,
+        { $addToSet: { pushTokens: pushToken } }, // $addToSet prevents duplicates
+        { new: true }
+      );
+
+      if (!user) {
+        res.status(404).json({ message: "User not found." });
+        return
+      }
+
+      res.status(200).json({
+        message: "Push token added successfully.",
+        pushTokens: user.pushTokens,
+      });
+    
+    } catch (error: any) {
+      console.error(error);
+      res.status(500).json({ message: "Server error." });
+    }
+
+})
+
 function generateRandomNumber(): string {
   const min = 100000;
   const max = 999999;
