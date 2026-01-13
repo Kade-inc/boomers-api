@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import asyncHandler from "express-async-handler";
-import nodemailer from "nodemailer";
+import queueEmail from "../../services/emailQueue";
 import Team from "../../models/teamModel";
 import User from "../../models/userModel";
 import { CustomRequest } from "../../middleware/validateTokenHandler";
@@ -213,7 +213,7 @@ export const joinTeam = asyncHandler(
       );
       console.log(
         "Notification emitted to team owner's room " +
-          teamExists.owner_id.toString(),
+        teamExists.owner_id.toString(),
         notification
       );
 
@@ -223,7 +223,7 @@ export const joinTeam = asyncHandler(
         <p>Best,</p>
         <p>Boomers Support</p>
       </div>`;
-      sendMail(transporter, owner.email, emailTemplate);
+      queueEmail(owner.email, emailTemplate, "Team Member Request");
 
       res.status(201).json({ message: "successful", data: teamMemberRequest });
     } catch (error: any) {
@@ -313,9 +313,8 @@ export const updateJoinRequest = asyncHandler(
 
       const notification = await Notification.create({
         user: memberRequest.user_id,
-        message: `Your request to join ${
-          teamName?.name
-        } has been ${status.toLowerCase()}.`,
+        message: `Your request to join ${teamName?.name
+          } has been ${status.toLowerCase()}.`,
         reference: memberRequest.team_id,
         referenceModel: "Team",
         subreference: memberRequest._id,
@@ -329,7 +328,7 @@ export const updateJoinRequest = asyncHandler(
       );
       console.log(
         "Notification emitted to user's room " +
-          memberRequest.user_id.toString(),
+        memberRequest.user_id.toString(),
         notification
       );
 
@@ -339,7 +338,7 @@ export const updateJoinRequest = asyncHandler(
           <p>Best,</p>
           <p>Boomers Support</p>
         </div>`;
-      sendMail(transporter, userExists.email, emailTemplate);
+      queueEmail(userExists.email, emailTemplate, "Team Member Request");
 
       res.status(200).json({ message: "successful", data: updatedRequest });
     } catch (error: any) {
@@ -463,15 +462,15 @@ export const fetchTeamMemberRequests = asyncHandler(
         // Only include specific fields from the profile
         const limitedProfile = userProfile
           ? {
-              user_id: userProfile.user_id,
-              firstName: userProfile.firstName,
-              lastName: userProfile.lastName,
-              username: userProfile.username,
-              interests: userProfile.interests,
-              profile_picture: userProfile.profile_picture
-                ? `${process.env.S3_BUCKET_PREFIX}${userProfile.profile_picture}`
-                : null,
-            }
+            user_id: userProfile.user_id,
+            firstName: userProfile.firstName,
+            lastName: userProfile.lastName,
+            username: userProfile.username,
+            interests: userProfile.interests,
+            profile_picture: userProfile.profile_picture
+              ? `${process.env.S3_BUCKET_PREFIX}${userProfile.profile_picture}`
+              : null,
+          }
           : {};
         return {
           ...request._doc,
@@ -487,31 +486,4 @@ export const fetchTeamMemberRequests = asyncHandler(
   }
 );
 
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  host: "smtp.gmail.com",
-  port: 587,
-  secure: false, // Use `true` for port 465, `false` for all other ports
-  auth: {
-    user: process.env.USER_EMAIL,
-    pass: process.env.MAIL_PASSWORD,
-  },
-});
 
-// async..await is not allowed in global scope, must use a wrapper
-const sendMail = async (transporter: any, user: any, template: any) => {
-  const mailOptions = {
-    from: {
-      name: "Boomers",
-      address: process.env.USER_EMAIL,
-    }, // sender address
-    to: [user], // list of receivers
-    subject: "Team Member Request", // Subject line
-    html: template,
-  };
-  try {
-    await transporter.sendMail(mailOptions);
-  } catch (error: any) {
-    throw new Error(error);
-  }
-};
