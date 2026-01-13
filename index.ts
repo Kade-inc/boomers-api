@@ -8,6 +8,9 @@ import swaggerDocs from "./swagger";
 
 import dotenv from "dotenv";
 
+// Import email worker to start processing email jobs
+import "./workers/emailWorker";
+
 import userRouter from "./routes/userRoutes";
 import userProfileRouter from "./routes/userProfileRoutes";
 import teamRouter from "./routes/team/teamRoutes";
@@ -71,12 +74,12 @@ app.locals.io = io;
 
 io.on("connection", (socket) => {
   console.log(`Socket connected: ${socket.id}`);
-  
+
   socket.on("joinUser", ({ userId }) => {
     socket.join(userId);
     console.log(`Socket ${socket.id} joined personal room for user ${userId}`);
   });
-  
+
   socket.on("joinTeam", ({ teamId }) => {
     socket.join(`team_${teamId}`);
     console.log(`Socket ${socket.id} joined room team_${teamId}`);
@@ -95,7 +98,7 @@ io.on("connection", (socket) => {
 
 server.listen(port, () => {
   console.log(`Server running on http://localhost:${port}`);
- 
+
 });
 
 // server.listen(

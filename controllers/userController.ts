@@ -5,7 +5,7 @@ import asyncHandler from "express-async-handler";
 import User from "../models/userModel";
 import * as EmailValidator from "email-validator";
 import UserVerificationCode from "../models/userVerificationCodeModel";
-import nodemailer from "nodemailer";
+import queueEmail from "../services/emailQueue";
 import dotenv from "dotenv";
 import UserProfile from "../models/userProfileModel";
 import Role from "../models/roleModel";
@@ -155,7 +155,7 @@ const registerUser = asyncHandler(async (req: Request, res: Response) => {
         <p><a href="${verificationLink}" target="_blank">Verify Account</a></p>
         <p>This link will expire in 24 hours.</p>
         </div>`;
-        sendMail(transporter, email, emailTemplate);
+        queueEmail(email, emailTemplate);
       }
     } else {
       res.status(400).json({ error: "User not registered." });
@@ -229,7 +229,7 @@ export const verifyUser = asyncHandler(async (req: Request, res: Response) => {
             <p>Best,</p>
             <p>Boomers Support</p>
           </div>`;
-            sendMail(transporter, user[0].email, emailTemplate);
+            queueEmail(user[0].email, emailTemplate);
           }
           const userProfile = await UserProfile.create({
             email: user[0].email,
@@ -331,7 +331,7 @@ export const resendVerificationCode = asyncHandler(
               <h2>${unhashedCode}</h2>
               <p>This code will expire in 24 hours.</p>
             </div>`;
-              sendMail(transporter, email, emailTemplate);
+              queueEmail(email, emailTemplate);
             }
             res.status(201).json({
               successful: true,
@@ -502,12 +502,7 @@ export const forgotPassword = async (req: Request, res: Response) => {
           <p>Please use this code to reset your password</p>
         </div>`;
 
-      sendMail(
-        transporter,
-        email,
-        emailTemplate,
-        "Password Reset Verification Code"
-      );
+      queueEmail(email, emailTemplate, "Password Reset Verification Code");
 
       return res.status(200).json({
         message: "Verification code sent successfully",
@@ -555,7 +550,7 @@ export const forgotPassword = async (req: Request, res: Response) => {
           <a href="${process.env.FRONTEND_URL}/reset-password?token=${resetToken}&id=${user._id}" target=_"blank">Reset Password</a>
         </div>`;
 
-      sendMail(transporter, email, emailTemplate, "Forgot Password");
+      queueEmail(email, emailTemplate, "Forgot Password");
 
       return res.status(200).json({
         message: "Reset password email sent successfully",
@@ -626,7 +621,7 @@ export const resetPassword = async (req: Request, res: Response) => {
                  <p>Your password was reset successfully</p>
              </div>`;
     // Assuming you have a function sendMail defined somewhere
-    sendMail(transporter, user[0].email, emailTemplate, "Password Reset");
+    queueEmail(user[0].email, emailTemplate, "Password Reset");
     // Return success response
     res.status(200).json({ message: "Password reset successfully" });
   } catch (error) {
@@ -706,13 +701,13 @@ export const addUserPushToken = asyncHandler(
         message: "Push token added successfully.",
         pushTokens: user.pushTokens,
       });
-    
+
     } catch (error: any) {
       console.error(error);
       res.status(500).json({ message: "Server error." });
     }
 
-})
+  })
 
 function generateRandomNumber(): string {
   const min = 100000;
@@ -722,38 +717,6 @@ function generateRandomNumber(): string {
   return generateRandomNumber.toString();
 }
 
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  host: "smtp.gmail.com",
-  port: 587,
-  secure: false, // Use `true` for port 465, `false` for all other ports
-  auth: {
-    user: process.env.USER_EMAIL,
-    pass: process.env.MAIL_PASSWORD,
-  },
-});
 
-// async..await is not allowed in global scope, must use a wrapper
-const sendMail = async (
-  transporter: any,
-  user: any,
-  template: any,
-  subject?: string
-) => {
-  const mailOptions = {
-    from: {
-      name: "Boomers",
-      address: process.env.USER_EMAIL,
-    }, // sender address
-    to: [user], // list of receivers
-    subject: subject ? subject : "Verification Link", // Subject line
-    html: template,
-  };
-  try {
-    await transporter.sendMail(mailOptions);
-  } catch (error: any) {
-    throw new Error(error);
-  }
-};
 
 export default registerUser;
