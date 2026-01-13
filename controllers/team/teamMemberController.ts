@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import asyncHandler from "express-async-handler";
 import queueEmail from "../../services/emailQueue";
+import { createEmailTemplate } from "../../helpers/emailTemplates";
 import Team from "../../models/teamModel";
 import User from "../../models/userModel";
 import { CustomRequest } from "../../middleware/validateTokenHandler";
@@ -217,12 +218,10 @@ export const joinTeam = asyncHandler(
         notification
       );
 
-      const emailTemplate = `<div>
-        <p>Hi ${owner?.username},</p>
-        <p>You have a request from <strong>${userExists?.username}</strong> to join your team. Kindly log in to the application to review their request.</p>
-        <p>Best,</p>
-        <p>Boomers Support</p>
-      </div>`;
+      const emailTemplate = createEmailTemplate({
+        greeting: `Hi ${owner?.username},`,
+        content: `<p style="margin: 0 0 16px;">You have a request from <strong>${userExists?.username}</strong> to join your team.</p><p style="margin: 0;">Kindly log in to the application to review their request.</p>`,
+      });
       queueEmail(owner.email, emailTemplate, "Team Member Request");
 
       res.status(201).json({ message: "successful", data: teamMemberRequest });
@@ -332,12 +331,10 @@ export const updateJoinRequest = asyncHandler(
         notification
       );
 
-      const emailTemplate = `<div>
-          <p>Hi,</p>
-          <p>Your request to join team ${teamName?.name} has been ${status}.</p>
-          <p>Best,</p>
-          <p>Boomers Support</p>
-        </div>`;
+      const emailTemplate = createEmailTemplate({
+        greeting: `Hi,`,
+        content: `<p style="margin: 0;">Your request to join team <strong>${teamName?.name}</strong> has been <strong>${status}</strong>.</p>`,
+      });
       queueEmail(userExists.email, emailTemplate, "Team Member Request");
 
       res.status(200).json({ message: "successful", data: updatedRequest });

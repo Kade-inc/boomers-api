@@ -6,6 +6,7 @@ import User from "../models/userModel";
 import * as EmailValidator from "email-validator";
 import UserVerificationCode from "../models/userVerificationCodeModel";
 import queueEmail from "../services/emailQueue";
+import { createEmailTemplate, createCodeEmailTemplate } from "../helpers/emailTemplates";
 import dotenv from "dotenv";
 import UserProfile from "../models/userProfileModel";
 import Role from "../models/roleModel";
@@ -148,13 +149,13 @@ const registerUser = asyncHandler(async (req: Request, res: Response) => {
       }
 
       if (email) {
-        const emailTemplate = `<div>
-        <p>Hi ${username.trim()},</p>
-        <p>Thank you for signing up to Boomers.</p>
-        <p>Click on the link below to verify your account: </p>
-        <p><a href="${verificationLink}" target="_blank">Verify Account</a></p>
-        <p>This link will expire in 24 hours.</p>
-        </div>`;
+        const emailTemplate = createEmailTemplate({
+          greeting: `Hi ${username.trim()},`,
+          content: `<p style="margin: 0 0 16px;">Thank you for signing up to Boomers.</p><p style="margin: 0;">Click on the button below to verify your account:</p>`,
+          buttonText: "Verify Account",
+          buttonLink: verificationLink,
+          footer: "This link will expire in 24 hours.",
+        });
         queueEmail(email, emailTemplate);
       }
     } else {
@@ -223,12 +224,10 @@ export const verifyUser = asyncHandler(async (req: Request, res: Response) => {
 
         if (isVerified) {
           if (user[0].email) {
-            const emailTemplate = `<div>
-            <p>Hi ${user[0].username},</p>
-            <p>Your email has been verified successfully!</p>
-            <p>Best,</p>
-            <p>Boomers Support</p>
-          </div>`;
+            const emailTemplate = createEmailTemplate({
+              greeting: `Hi ${user[0].username},`,
+              content: `<p style="margin: 0;">Your email has been verified successfully!</p>`,
+            });
             queueEmail(user[0].email, emailTemplate);
           }
           const userProfile = await UserProfile.create({
@@ -324,13 +323,12 @@ export const resendVerificationCode = asyncHandler(
               { new: true }
             );
             if (email) {
-              const emailTemplate = `<div>
-              <p>Hi ${user.username},</p>
-              <p>You requested a new verification code.</p>
-              <p>Your verification code is: </p>
-              <h2>${unhashedCode}</h2>
-              <p>This code will expire in 24 hours.</p>
-            </div>`;
+              const emailTemplate = createCodeEmailTemplate({
+                greeting: `Hi ${user.username},`,
+                message: "You requested a new verification code. Your verification code is:",
+                code: unhashedCode,
+                footer: "This code will expire in 24 hours.",
+              });
               queueEmail(email, emailTemplate);
             }
             res.status(201).json({
@@ -494,13 +492,12 @@ export const forgotPassword = async (req: Request, res: Response) => {
       }
 
       // Send email with the verification code
-      const emailTemplate = `
-        <div>
-          <h2>Hi ${user.username}</h2>
-          <p>You requested to reset your password</p>
-          <p>Your verification code is: <strong>${verificationCode}</strong></p>
-          <p>Please use this code to reset your password</p>
-        </div>`;
+      const emailTemplate = createCodeEmailTemplate({
+        greeting: `Hi ${user.username},`,
+        message: "You requested to reset your password. Your verification code is:",
+        code: verificationCode,
+        footer: "Please use this code to reset your password.",
+      });
 
       queueEmail(email, emailTemplate, "Password Reset Verification Code");
 
@@ -542,13 +539,12 @@ export const forgotPassword = async (req: Request, res: Response) => {
       }
 
       // Send email with the reset link
-      const emailTemplate = `
-        <div>
-          <h2>Hi ${user.username}</h2>
-          <p>You requested to reset your password</p>
-          <p>Please click on the below link to reset your password</p>
-          <a href="${process.env.FRONTEND_URL}/reset-password?token=${resetToken}&id=${user._id}" target=_"blank">Reset Password</a>
-        </div>`;
+      const emailTemplate = createEmailTemplate({
+        greeting: `Hi ${user.username},`,
+        content: `<p style="margin: 0;">You requested to reset your password. Click the button below to reset it:</p>`,
+        buttonText: "Reset Password",
+        buttonLink: `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}&id=${user._id}`,
+      });
 
       queueEmail(email, emailTemplate, "Forgot Password");
 
@@ -615,11 +611,10 @@ export const resetPassword = async (req: Request, res: Response) => {
     await passwordResetToken.deleteOne();
 
     // Send email with the reset link
-    const emailTemplate = `
-             <div>
-                 <h2>Hi ${user[0].username}</h2>
-                 <p>Your password was reset successfully</p>
-             </div>`;
+    const emailTemplate = createEmailTemplate({
+      greeting: `Hi ${user[0].username},`,
+      content: `<p style="margin: 0;">Your password was reset successfully. You can now log in with your new password.</p>`,
+    });
     // Assuming you have a function sendMail defined somewhere
     queueEmail(user[0].email, emailTemplate, "Password Reset");
     // Return success response
