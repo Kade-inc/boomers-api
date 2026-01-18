@@ -25,6 +25,7 @@ import requestsRouter from "./routes/requestsRoutes";
 import notificationRouter from "./routes/notificationRoutes";
 import searchRouter from "./routes/searchRoutes";
 import recommendationsRouter from "./routes/recommendationsRoute";
+import shortUrlRouter, { shortUrlResolveRouter } from "./routes/shortUrlRoutes";
 const cors = require('cors')
 dotenv.config();
 
@@ -53,6 +54,8 @@ app.use("/api/user-requests", requestsRouter)
 app.use("/api/notifications", notificationRouter)
 app.use("/api/search", searchRouter)
 app.use("/api/recommendations", recommendationsRouter)
+app.use("/api/short-urls", shortUrlRouter)
+app.use("/s", shortUrlResolveRouter)  // Short URL redirect endpoint
 app.use(errorHandler);
 app.disable("x-powered-by"); // less hackers know about our stack
 
