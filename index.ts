@@ -8,6 +8,9 @@ import swaggerDocs from "./swagger";
 
 import dotenv from "dotenv";
 
+// Import email worker to start processing email jobs
+import "./workers/emailWorker";
+
 import userRouter from "./routes/userRoutes";
 import userProfileRouter from "./routes/userProfileRoutes";
 import teamRouter from "./routes/team/teamRoutes";
@@ -22,6 +25,7 @@ import requestsRouter from "./routes/requestsRoutes";
 import notificationRouter from "./routes/notificationRoutes";
 import searchRouter from "./routes/searchRoutes";
 import recommendationsRouter from "./routes/recommendationsRoute";
+import shortUrlRouter, { shortUrlResolveRouter } from "./routes/shortUrlRoutes";
 const cors = require('cors')
 dotenv.config();
 
@@ -50,6 +54,8 @@ app.use("/api/user-requests", requestsRouter)
 app.use("/api/notifications", notificationRouter)
 app.use("/api/search", searchRouter)
 app.use("/api/recommendations", recommendationsRouter)
+app.use("/api/short-urls", shortUrlRouter)
+app.use("/s", shortUrlResolveRouter)  // Short URL redirect endpoint
 app.use(errorHandler);
 app.disable("x-powered-by"); // less hackers know about our stack
 
@@ -71,12 +77,12 @@ app.locals.io = io;
 
 io.on("connection", (socket) => {
   console.log(`Socket connected: ${socket.id}`);
-  
+
   socket.on("joinUser", ({ userId }) => {
     socket.join(userId);
     console.log(`Socket ${socket.id} joined personal room for user ${userId}`);
   });
-  
+
   socket.on("joinTeam", ({ teamId }) => {
     socket.join(`team_${teamId}`);
     console.log(`Socket ${socket.id} joined room team_${teamId}`);
@@ -93,20 +99,19 @@ io.on("connection", (socket) => {
 });
 
 
-// server.listen(port, () => {
-//   console.log(`Server running on http://localhost:${port}`);
- 
-// });
+server.listen(port, () => {
+  console.log(`Server running on http://localhost:${port}`);
 
-server.listen(
-  {
-    port: Number(port),
-    host: "0.0.0.0",
-  },
-  () => {
-    console.log(`Server running on http://0.0.0.0:${port}`);
-  }
-);
+});
+
+// server.listen(
+//   {
+//     port: Number(port),
+//   },
+//   () => {
+//     console.log(`Server running on http://0.0.0.0:${port}`);
+//   }
+// );
 
 
 swaggerDocs(app, port);

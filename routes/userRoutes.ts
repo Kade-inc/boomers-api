@@ -1,5 +1,6 @@
 import express from "express";
 import registerUser, {
+  addUserPushToken,
   currentUser,
   forgotPassword,
   getUser,
@@ -327,6 +328,8 @@ userRouter.post("/verify-reset-token", verifyResetToken);
 userRouter.post("/refresh-token", refreshToken)
 
 userRouter.post("/logout", logout)
+
+userRouter.post("/push-token", validateToken, addUserPushToken)
 
 
 

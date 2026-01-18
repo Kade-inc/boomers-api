@@ -8,6 +8,7 @@ interface IUser {
   profile: Schema.Types.ObjectId;
   username: string;
   role: Schema.Types.ObjectId;
+  pushTokens: string[];
 }
 
 const userSchema = new Schema<IUser>(
@@ -42,7 +43,11 @@ const userSchema = new Schema<IUser>(
       type: Schema.Types.ObjectId,
       ref: "Role",
       default: null
-    }
+    },
+    pushTokens: {
+      type: [String],
+      required: false
+    },
   },
   {
     timestamps: true,

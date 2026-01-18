@@ -1,11 +1,8 @@
 import asyncHandler from "express-async-handler";
 import { CustomRequest } from "../middleware/validateTokenHandler";
 import { Response } from "express";
-import Team from "../models/teamModel";
-import UserProfile from "../models/userProfileModel";
-import SearchHistory from "../models/searchHistoryModel";
+import { Team, UserProfile, SearchHistory, TeamChallenge, Role, User } from "../models";
 import mongoose from "mongoose";
-import TeamChallenge from "../models/teamChallengeModel";
 
 export const search = asyncHandler(
     async (req: CustomRequest, res: Response) => {
@@ -20,6 +17,13 @@ export const search = asyncHandler(
         const query = String(q).trim();
 
         try {
+                // Get superadmin role ID to exclude superadmin users
+                const superAdminRole = await Role.findOne({ name: 'superadmin' });
+                const superAdminUserIds = superAdminRole 
+                    ? await User.find({ role: superAdminRole._id }).select('_id').lean()
+                    : [];
+                const excludedUserIds = superAdminUserIds.map((user: any) => user._id);
+
                 // Search Teams by name or username
                 const teams = await Team.find({
                 $or: [
@@ -28,12 +32,17 @@ export const search = asyncHandler(
                 ]
                 }).select("_id name teamColor domain subdomain subdomainTopics").limit(10);
             
-                // Search Profiles by name or job
+                // Search Profiles by name or job (excluding superadmin users)
                 let profiles = await UserProfile.find({
-                $or: [
-                    { firstName: { $regex: query, $options: "i" } },
-                    { lastName: { $regex: query, $options: "i" } },
-                    { username: { $regex: query, $options: "i" } },
+                $and: [
+                    {
+                        $or: [
+                            { firstName: { $regex: query, $options: "i" } },
+                            { lastName: { $regex: query, $options: "i" } },
+                            { username: { $regex: query, $options: "i" } },
+                        ]
+                    },
+                    { user_id: { $nin: excludedUserIds } }
                 ]
                 }).select("user_id firstName lastName username profile_picture").limit(10);
 
@@ -57,10 +66,15 @@ export const search = asyncHandler(
                   });
                   
                   const profileCount = await UserProfile.countDocuments({
-                    $or: [
-                      { firstName: { $regex: query, $options: "i" } },
-                      { lastName: { $regex: query, $options: "i" } },
-                      { username: { $regex: query, $options: "i" } },
+                    $and: [
+                      {
+                        $or: [
+                          { firstName: { $regex: query, $options: "i" } },
+                          { lastName: { $regex: query, $options: "i" } },
+                          { username: { $regex: query, $options: "i" } },
+                        ]
+                      },
+                      { user_id: { $nin: excludedUserIds } }
                     ]
                   });
                   

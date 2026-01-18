@@ -5,7 +5,7 @@ import {
   PutObjectCommand,
   S3Client,
   GetObjectCommand,
-  DeleteObjectCommand
+  DeleteObjectCommand,
 } from "@aws-sdk/client-s3";
 import crypto from "crypto";
 import sharp from "sharp";
@@ -43,15 +43,15 @@ export const getProfile = asyncHandler(async (req: Request, res: Response) => {
       };
       const command = new GetObjectCommand(getObjectParams);
       const url = await getSignedUrl(s3, command, { expiresIn: 3600 });
-      
+
       if (url) profile.profile_picture = url;
-    } 
+    }
     res.status(200).json({
       successful: true,
       profile,
     });
   } catch (error: any) {
-    res.status(400)
+    res.status(400);
     throw new Error(error);
   }
 });
@@ -71,8 +71,22 @@ export const updateUserProfile = asyncHandler(async (req: any, res) => {
       res.status(403).json({ error: "You do not own this profile!" });
       return;
     }
-    const { phoneNumber, firstName, lastName, bio, interests, gender, job, location, city, country, latitude, longitude } =
-      req.body;
+    const {
+      phoneNumber,
+      firstName,
+      lastName,
+      bio,
+      interests,
+      gender,
+      job,
+      location,
+      city,
+      country,
+      latitude,
+      longitude,
+      website,
+    } = req.body;
+
     let updateProfileBody = {
       phoneNumber: profile.phoneNumber,
       firstName: profile.firstName,
@@ -84,9 +98,10 @@ export const updateUserProfile = asyncHandler(async (req: any, res) => {
       location: profile.location,
       city: profile.city,
       country: profile.country,
-      latitude: profile.latitude,
-      longitude: profile.longitude,
-      locationGeo: {}
+      latitude: profile?.latitude,
+      longitude: profile?.longitude,
+      locationGeo: {},
+      website: profile?.website,
     };
 
     // if (username && username.trim().length > 0)
@@ -103,20 +118,19 @@ export const updateUserProfile = asyncHandler(async (req: any, res) => {
 
     if (bio && bio.trim().length > 0) updateProfileBody.bio = bio.trim();
 
-    if (interests && typeof interests === "object") {}
-      updateProfileBody.interests = interests;
+    if (interests && typeof interests === "object") {
+    }
+    updateProfileBody.interests = interests;
 
-      if (job && job.trim().length > 0)
-        updateProfileBody.job = job.trim();
+    if (job && job.trim().length > 0) updateProfileBody.job = job.trim();
 
-      if (location && location.trim().length > 0)
-        updateProfileBody.location = location.trim();
+    if (location && location.trim().length > 0)
+      updateProfileBody.location = location.trim();
 
-      if (city && city.trim().length > 0)
-        updateProfileBody.city = city.trim();
+    if (city && city.trim().length > 0) updateProfileBody.city = city.trim();
 
-      if (country && country.trim().length > 0)
-        updateProfileBody.country = country.trim();
+    if (country && country.trim().length > 0)
+      updateProfileBody.country = country.trim();
 
     if (gender && gender.trim().length > 0) {
       const genderLower = gender.toLowerCase();
@@ -134,25 +148,10 @@ export const updateUserProfile = asyncHandler(async (req: any, res) => {
       }
     }
 
-        //   When updating interests
-    //   {
-    //     "interests": {
-    //         "domain": [
-    //             "Software Engineering"
-    //         ],
-    //         "subdomain": [
-    //             "Frontend"
-    //         ],
-    //         "domainTopics": [
-    //             "React Js"
-    //         ]
-    //     }
-    // }
+    if (website && website.trim().length > 0)
+      updateProfileBody.website = website.trim();
 
-    if (
-      typeof latitude === "number" &&
-      typeof longitude === "number"
-    ) {
+    if (typeof latitude === "number" && typeof longitude === "number") {
       updateProfileBody.locationGeo = {
         type: "Point",
         coordinates: [longitude, latitude], // always [lng, lat]
@@ -165,7 +164,7 @@ export const updateUserProfile = asyncHandler(async (req: any, res) => {
       //   .resize({ height: 400, width: 400, fit: "contain" })
       //   .toBuffer();
 
-      const imageKey = randomImageName()
+      const imageKey = randomImageName();
       const params = {
         Bucket: bucketName,
         Key: imageKey,
@@ -190,9 +189,11 @@ export const updateUserProfile = asyncHandler(async (req: any, res) => {
         );
 
         if (updatedProfile) {
-          updatedProfile.profile_picture = updatedProfile?.profile_picture ? `${process.env.S3_BUCKET_PREFIX}${updatedProfile.profile_picture}` : null
+          updatedProfile.profile_picture = updatedProfile?.profile_picture
+            ? `${process.env.S3_BUCKET_PREFIX}${updatedProfile.profile_picture}`
+            : null;
         }
-        
+
         res.status(200).json(updatedProfile);
         return;
       }
@@ -205,14 +206,16 @@ export const updateUserProfile = asyncHandler(async (req: any, res) => {
           lastName: updateProfileBody.lastName,
           phoneNumber: updateProfileBody.phoneNumber,
           bio: updateProfileBody.bio,
-          interests: updateProfileBody.interests ? (() => {
-            try {
-              return JSON.parse(updateProfileBody.interests);
-            } catch (error) {
-              console.error('Error parsing interests JSON:', error);
-              return profile.interests;
-            }
-          })() : profile.interests,
+          interests: updateProfileBody.interests
+            ? (() => {
+                try {
+                  return JSON.parse(updateProfileBody.interests);
+                } catch (error) {
+                  console.error("Error parsing interests JSON:", error);
+                  return profile.interests;
+                }
+              })()
+            : profile.interests,
           gender: updateProfileBody.gender,
           profile_picture: imageKey,
           job: updateProfileBody.job,
@@ -221,7 +224,8 @@ export const updateUserProfile = asyncHandler(async (req: any, res) => {
           country: updateProfileBody.country,
           latitude: updateProfileBody.latitude,
           longitude: updateProfileBody.longitude,
-          locationGeo: updateProfileBody.locationGeo
+          locationGeo: updateProfileBody.locationGeo,
+          website: updateProfileBody.website,
         },
         {
           new: true,
@@ -229,9 +233,11 @@ export const updateUserProfile = asyncHandler(async (req: any, res) => {
       );
 
       if (updatedProfile) {
-        updatedProfile.profile_picture = updatedProfile?.profile_picture ? `${process.env.S3_BUCKET_PREFIX}${updatedProfile.profile_picture}` : null
+        updatedProfile.profile_picture = updatedProfile?.profile_picture
+          ? `${process.env.S3_BUCKET_PREFIX}${updatedProfile.profile_picture}`
+          : null;
       }
-      
+
       res.status(200).json(updatedProfile);
       return;
     }
@@ -243,14 +249,16 @@ export const updateUserProfile = asyncHandler(async (req: any, res) => {
         lastName: updateProfileBody.lastName,
         phoneNumber: updateProfileBody.phoneNumber,
         bio: updateProfileBody.bio,
-        interests: updateProfileBody.interests ? (() => {
-          try {
-            return JSON.parse(updateProfileBody.interests);
-          } catch (error) {
-            console.error('Error parsing interests JSON:', error);
-            return profile.interests;
-          }
-        })() : profile.interests,
+        interests: updateProfileBody.interests
+          ? (() => {
+              try {
+                return JSON.parse(updateProfileBody.interests);
+              } catch (error) {
+                console.error("Error parsing interests JSON:", error);
+                return profile.interests;
+              }
+            })()
+          : profile.interests,
         gender: updateProfileBody.gender,
         job: updateProfileBody.job,
         location: updateProfileBody.location,
@@ -258,7 +266,8 @@ export const updateUserProfile = asyncHandler(async (req: any, res) => {
         country: updateProfileBody.country,
         latitude: updateProfileBody.latitude,
         longitude: updateProfileBody.longitude,
-        locationGeo: updateProfileBody.locationGeo
+        locationGeo: updateProfileBody.locationGeo,
+        website: updateProfileBody.website,
       },
       {
         new: true,
@@ -266,27 +275,28 @@ export const updateUserProfile = asyncHandler(async (req: any, res) => {
     );
 
     if (updatedProfile) {
-      updatedProfile.profile_picture = updatedProfile?.profile_picture ? `${process.env.S3_BUCKET_PREFIX}${updatedProfile.profile_picture}` : null
+      updatedProfile.profile_picture = updatedProfile?.profile_picture
+        ? `${process.env.S3_BUCKET_PREFIX}${updatedProfile.profile_picture}`
+        : null;
     }
-    
+
     res.status(200).json(updatedProfile);
   } catch (error: any) {
+    res.status(500);
     throw new Error(error);
   }
 });
 
-
 //@desc Delete profile picture
 //@route DELETE /api/users/:id/profile-picture
 //access private
-export const deleteProfilePicture = asyncHandler(async (req:any, res) => {
-
+export const deleteProfilePicture = asyncHandler(async (req: any, res) => {
   try {
-    const userId = req.params.id
+    const userId = req.params.id;
     const profile = await UserProfile.findOne({ user_id: userId });
     if (!profile) {
-      res.status(404).json({ error: 'Profile not found.' });
-      return
+      res.status(404).json({ error: "Profile not found." });
+      return;
     }
 
     if (profile.user_id.toString() !== req.user.id) {
@@ -296,10 +306,10 @@ export const deleteProfilePicture = asyncHandler(async (req:any, res) => {
 
     const imageKey = profile.profile_picture;
     if (!imageKey) {
-      res.status(404).json({ error: 'Profile picture not found.' });
-      return
+      res.status(404).json({ error: "Profile picture not found." });
+      return;
     }
-    
+
     const deleteParams = {
       Bucket: bucketName,
       Key: imageKey,
@@ -309,10 +319,23 @@ export const deleteProfilePicture = asyncHandler(async (req:any, res) => {
     await s3.send(deleteCommand);
     await UserProfile.findByIdAndUpdate(profile._id, { profile_picture: null });
     res.status(204).json({ message: "Profile picture deleted" });
-  
+  } catch (error: any) {
+    res.status(500);
+    throw new Error(error);
   }
-   catch (error:any) {
-    res.status(500)
-    throw new Error(error)
-  }
-})
+});
+
+//   When updating interests
+//   {
+//     "interests": {
+//         "domain": [
+//             "Software Engineering"
+//         ],
+//         "subdomain": [
+//             "Frontend"
+//         ],
+//         "domainTopics": [
+//             "React Js"
+//         ]
+//     }
+// }
