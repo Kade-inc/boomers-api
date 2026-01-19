@@ -3,6 +3,7 @@ import {
   createTeam,
   deleteTeam,
   getAllTeams,
+  getRandomTeam,
   getTeam,
   updateTeam,
 } from "../../controllers/team/teamController";
@@ -17,6 +18,24 @@ const upload = multer({ storage: storage });
 
 const teamRouter = express.Router();
 
+/**
+ * @openapi
+ * '/api/teams/spotlight':
+ *  get:
+ *     tags:
+ *     - Team Controller
+ *     summary: Get a random team
+ *     responses:
+ *      200:
+ *        description: Ok
+ *      400:
+ *        description: Bad Request
+ *      404:
+ *        description: Not Found
+ *      500:
+ *        description: Server Error
+ */
+teamRouter.get("/spotlight", getRandomTeam);
 
 /**
  * @openapi
@@ -60,10 +79,7 @@ teamRouter.get("/", getAllTeams);
  */
 teamRouter.get("/:id", getTeam);
 
-
 teamRouter.use(validateToken);
-
-
 
 /**
  * @openapi
@@ -109,8 +125,6 @@ teamRouter.use(validateToken);
  *        description: Server Error
  */
 teamRouter.post("/", upload.single("image"), createTeam);
-
-
 
 /**
  * @openapi
@@ -170,9 +184,5 @@ teamRouter.put("/:id", upload.single("image"), updateTeam);
  *        description: Server Error
  */
 teamRouter.delete("/:id", deleteTeam);
-
-
-
-
 
 export default teamRouter;

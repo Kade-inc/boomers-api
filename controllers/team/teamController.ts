@@ -16,6 +16,7 @@ import TeamSubDomain from "../../models/teamSubdomainModel";
 import DomainTopic from "../../models/domainTopicModel";
 import UserProfile from "../../models/userProfileModel";
 import User from "../../models/userModel";
+import redisClient from "../../config/redisClient";
 
 const randomImageName = (bytes = 32) =>
   crypto.randomBytes(bytes).toString("hex");
@@ -28,10 +29,10 @@ const generateTeamUsername = (teamName: string): string => {
     .replace(/\s+/g, '-') // Replace spaces with hyphens
     .replace(/-+/g, '-') // Replace multiple hyphens with single hyphen
     .trim();
-  
+
   // Generate random number between 1 and 999999
   const randomNumber = Math.floor(Math.random() * 999999) + 1;
-  
+
   return `${cleanName}-${randomNumber}`;
 };
 const bucketName: any = process.env.BUCKET_NAME;
@@ -46,6 +47,10 @@ const s3 = new S3Client({
   },
   region: bucketRegion,
 });
+
+// Define cache key and TTL (24 hours in seconds)
+const CACHE_KEY = "dailyRandomTeam";
+const TTL_SECONDS = 86400; // 24 hours
 
 //@desc Create team
 //@route POST /api/teams
@@ -62,7 +67,7 @@ export const createTeam = asyncHandler(
 
       // Generate teamUsername from team name
       let teamUsername = generateTeamUsername(name);
-      
+
       // Check if the generated username already exists, if so, generate a new one
       let attempts = 0;
       const maxAttempts = 10;
@@ -74,7 +79,7 @@ export const createTeam = asyncHandler(
         teamUsername = generateTeamUsername(name); // Generate new username
         attempts++;
       }
-      
+
       if (attempts >= maxAttempts) {
         res.status(409);
         throw new Error("Unable to generate unique team username. Please try again.");
@@ -139,7 +144,7 @@ export const createTeam = asyncHandler(
           subdomain: subdomain,
           subdomainTopics: subdomainTopics,
           displayImage: randomImageName(),
-          teamColor: teamColor
+          teamColor: teamColor,
         });
 
         await TeamMember.create({
@@ -158,7 +163,7 @@ export const createTeam = asyncHandler(
         subdomain: subdomain,
         subdomainTopics: subdomainTopics,
         owner_id: req.user.id,
-        teamColor: teamColor
+        teamColor: teamColor,
       });
 
       await TeamMember.create({
@@ -179,7 +184,8 @@ export const createTeam = asyncHandler(
 export const getAllTeams = asyncHandler(async (req: Request, res: Response) => {
   try {
     let teams: any = [];
-    const { name, domain, subdomain, subdomainTopics, page, limit, userId } = req.query;
+    const { name, domain, subdomain, subdomainTopics, page, limit, userId } =
+      req.query;
 
     // Convert page and limit to numbers, or use defaults
     const pageNum = parseInt(page as string) || 1;
@@ -191,11 +197,15 @@ export const getAllTeams = asyncHandler(async (req: Request, res: Response) => {
     let topicsFilter: RegExp[] | undefined;
     if (subdomainTopics) {
       if (Array.isArray(subdomainTopics)) {
-        topicsFilter = (subdomainTopics as string[]).map((topic: string) => new RegExp(topic, 'i'));
-      } else if (typeof subdomainTopics === 'string') {
-        topicsFilter = subdomainTopics.includes(',')
-          ? subdomainTopics.split(',').map((topic: string) => new RegExp(topic.trim(), 'i'))
-          : [new RegExp(subdomainTopics, 'i')];
+        topicsFilter = (subdomainTopics as string[]).map(
+          (topic: string) => new RegExp(topic, "i")
+        );
+      } else if (typeof subdomainTopics === "string") {
+        topicsFilter = subdomainTopics.includes(",")
+          ? subdomainTopics
+            .split(",")
+            .map((topic: string) => new RegExp(topic.trim(), "i"))
+          : [new RegExp(subdomainTopics, "i")];
       }
     }
 
@@ -208,13 +218,13 @@ export const getAllTeams = asyncHandler(async (req: Request, res: Response) => {
       // Build query for teams that the user is a member of
       const query: any = { _id: { $in: teamIds } };
       if (domain) {
-        query.domain = { $regex: new RegExp(domain as string, 'i') };
+        query.domain = { $regex: new RegExp(domain as string, "i") };
       }
       if (name) {
-        query.name = { $regex: new RegExp(name as string, 'i') };
+        query.name = { $regex: new RegExp(name as string, "i") };
       }
       if (subdomain) {
-        query.subdomain = { $regex: new RegExp(subdomain as string, 'i') };
+        query.subdomain = { $regex: new RegExp(subdomain as string, "i") };
       }
 
       if (topicsFilter) {
@@ -227,19 +237,19 @@ export const getAllTeams = asyncHandler(async (req: Request, res: Response) => {
       // Build a dynamic query based on the available filters
       const query: any = {};
       if (name) {
-        query.name = { $regex: new RegExp(name as string, 'i') };
+        query.name = { $regex: new RegExp(name as string, "i") };
       }
       if (domain) {
-        query.domain = { $regex: new RegExp(domain as string, 'i') };
+        query.domain = { $regex: new RegExp(domain as string, "i") };
       }
       if (subdomain) {
-        query.subdomain = { $regex: new RegExp(subdomain as string, 'i') };
+        query.subdomain = { $regex: new RegExp(subdomain as string, "i") };
       }
 
       if (topicsFilter) {
         query.subdomainTopics = { $in: topicsFilter };
       }
-  
+
       teams = await Team.find(query).skip(skip).limit(limitNum);
       totalCount = await Team.countDocuments(query);
     }
@@ -258,26 +268,25 @@ export const getAllTeams = asyncHandler(async (req: Request, res: Response) => {
   }
 });
 
-
 //@desc Get Team
 //@route GET /api/teams/:id
 //access private
 export const getTeam = asyncHandler(async (req: Request, res: Response) => {
   try {
-    const team:any = await Team.findOne({ _id: req.params.id });
+    const team: any = await Team.findOne({ _id: req.params.id });
 
     if (!team) {
       res.status(404).json({ message: "Team does not exist" });
       return;
     }
 
-    const teamMembers = await TeamMember.find({team_id: req.params.id})
-    const userIds:any = []
-    teamMembers.map((member:any) => {
-      userIds.push(member.user_id)
-    })
-    const users:any = await User.find({_id: { $in: userIds }})
-    const userProfiles = await UserProfile.find({user_id: { $in: userIds }})
+    const teamMembers = await TeamMember.find({ team_id: req.params.id });
+    const userIds: any = [];
+    teamMembers.map((member: any) => {
+      userIds.push(member.user_id);
+    });
+    const users: any = await User.find({ _id: { $in: userIds } });
+    const userProfiles = await UserProfile.find({ user_id: { $in: userIds } });
 
     if (!users) {
       res.status(400).json({ message: "No users in the system!" });
@@ -285,9 +294,11 @@ export const getTeam = asyncHandler(async (req: Request, res: Response) => {
     }
 
     // Map over the teamMembers array and match the user_id to users array
-    const teamMembersWithDetails = teamMembers.map((member:any) => {
+    const teamMembersWithDetails = teamMembers.map((member: any) => {
       // Find the corresponding user based on user_id
-      const user = users.find((user:any) => user._id.toString() === member.user_id.toString());
+      const user = users.find(
+        (user: any) => user._id.toString() === member.user_id.toString()
+      );
 
       // Return the team member with user details
       if (user) {
@@ -297,28 +308,32 @@ export const getTeam = asyncHandler(async (req: Request, res: Response) => {
           email: user.email,
           profile: user.profile,
           profile_picture: null,
-        }
+        };
       } else {
-        return null
+        return null;
       }
     });
 
-    teamMembersWithDetails.map((member:any) => {
-      const userProfile = userProfiles.find((profile:any) => profile._id.toString() === member.profile.toString());
-      
+    teamMembersWithDetails.map((member: any) => {
+      const userProfile = userProfiles.find(
+        (profile: any) => profile._id.toString() === member.profile.toString()
+      );
+
       if (userProfile) {
-        member.profile_picture = userProfile.profile_picture ? `${process.env.S3_BUCKET_PREFIX}${userProfile.profile_picture}` : null
-        member.firstName = userProfile.firstName,
-        member.lastName = userProfile.lastName
-        member.interests = userProfile.interests
+        member.profile_picture = userProfile.profile_picture
+          ? `${process.env.S3_BUCKET_PREFIX}${userProfile.profile_picture}`
+          : null;
+        (member.firstName = userProfile.firstName),
+          (member.lastName = userProfile.lastName);
+        member.interests = userProfile.interests;
       }
-    })
+    });
 
     const teamWithMembers = {
       ...team._doc,
-      members: teamMembersWithDetails
-    }
-    res.status(200).json({message: "successful", data: teamWithMembers});
+      members: teamMembersWithDetails,
+    };
+    res.status(200).json({ message: "successful", data: teamWithMembers });
   } catch (error: any) {
     throw new Error(error);
   }
@@ -331,7 +346,7 @@ export const updateTeam = asyncHandler(
   async (req: CustomRequest, res: Response) => {
     try {
       const team = await Team.findOne({ _id: req.params.id });
-      
+
       if (!team) {
         res.status(404);
         throw new Error("Team not found");
@@ -342,8 +357,15 @@ export const updateTeam = asyncHandler(
         return;
       }
 
-      const { name, teamUsername, domain, subdomain, subdomainTopics, teamColor } = req.body;
-      
+      const {
+        name,
+        teamUsername,
+        domain,
+        subdomain,
+        subdomainTopics,
+        teamColor,
+      } = req.body;
+
       // Initialize update object with current team values
       const updateData: any = {
         name: team.name,
@@ -351,7 +373,7 @@ export const updateTeam = asyncHandler(
         domain: team.domain,
         subdomain: team.subdomain,
         subdomainTopics: team.subdomainTopics,
-        teamColor: team.teamColor
+        teamColor: team.teamColor,
       };
 
       // Update only if new values are provided
@@ -382,7 +404,7 @@ export const updateTeam = asyncHandler(
         // If domain is not provided in the update, use the current team's domain
         const domainToCheck = domain ? domain : team.domain;
         domainExists = await TeamDomain.findOne({ name: domainToCheck });
-        
+
         if (!domainExists) {
           res.status(409).json({ error: "Domain doesn't exist" });
           return;
@@ -391,21 +413,30 @@ export const updateTeam = asyncHandler(
         subdomainExists = await TeamSubDomain.findOne({
           name: subdomain,
         });
-        
+
         if (!subdomainExists) {
           res.status(409).json({ error: "Sub Domain doesn't exist" });
           return;
         }
 
-        if (subdomainExists.parentDomain.toString() !== domainExists._id.toString()) {
-          res.status(409).json({ error: "Sub Domain does not belong to domain" });
+        if (
+          subdomainExists.parentDomain.toString() !==
+          domainExists._id.toString()
+        ) {
+          res
+            .status(409)
+            .json({ error: "Sub Domain does not belong to domain" });
           return;
         }
-        
+
         updateData.subdomain = subdomain.trim();
       }
 
-      if (subdomainTopics && Array.isArray(subdomainTopics) && subdomainTopics.length > 0) {
+      if (
+        subdomainTopics &&
+        Array.isArray(subdomainTopics) &&
+        subdomainTopics.length > 0
+      ) {
         const domainTopics = await DomainTopic.find({});
         const missingTopics: any = [];
         subdomainTopics.map((topic: any) => {
@@ -417,7 +448,8 @@ export const updateTeam = asyncHandler(
 
         if (missingTopics.length > 0) {
           res.status(404).json({
-            error: "The following topics were not updated because they do not exist",
+            error:
+              "The following topics were not updated because they do not exist",
             data: missingTopics,
           });
           return;
@@ -442,11 +474,9 @@ export const updateTeam = asyncHandler(
         updateData.displayImage = randomImageName();
       }
 
-      const updatedTeam = await Team.findByIdAndUpdate(
-        team._id,
-        updateData,
-        { new: true }
-      );
+      const updatedTeam = await Team.findByIdAndUpdate(team._id, updateData, {
+        new: true,
+      });
 
       res.status(200).json({ message: "successful", data: updatedTeam });
     } catch (error: any) {
@@ -473,5 +503,41 @@ export const deleteTeam = asyncHandler(async (req: Request, res: Response) => {
     // await Contact.remove()
     await Team.deleteOne({ _id: req.params.id });
     res.status(200).json(team);
-  } catch (error) {}
+  } catch (error) { }
 });
+
+//@desc Get Random Team
+//@route GET /api/teams/spotlight
+//access private
+export const getRandomTeam = asyncHandler(
+  async (req: CustomRequest, res: Response) => {
+    try {
+      // Try to fetch the daily random team from Redis
+      const cachedTeam = await redisClient.get(CACHE_KEY);
+      if (cachedTeam) {
+        // If found, parse it and return
+        res.status(200).json(JSON.parse(cachedTeam));
+        return;
+      }
+
+      // If not found in cache, get a random team from MongoDB
+      const randomTeam = await Team.aggregate([{ $sample: { size: 1 } }]);
+      if (!randomTeam || randomTeam.length === 0) {
+        res.status(404).json({ message: "No team found" });
+        return;
+      }
+
+      const teamToCache = randomTeam[0];
+
+      // Cache the selected team with a TTL of 24 hours
+      await redisClient.set(CACHE_KEY, JSON.stringify(teamToCache), {
+        EX: TTL_SECONDS,
+      });
+
+      // Return the newly selected team
+      res.status(200).json(teamToCache);
+    } catch (error: any) {
+      res.status(400).json({ error: error });
+    }
+  }
+);
