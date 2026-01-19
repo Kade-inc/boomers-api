@@ -3,6 +3,7 @@ import { CustomRequest } from "../middleware/validateTokenHandler";
 import { Response } from "express";
 import Chat from "../models/chatModel";
 import Message from "../models/messageModel";
+import { Team, TeamMember } from "../models";
 
 // createchat
 // findUserChats
@@ -237,6 +238,64 @@ export const deleteChat = asyncHandler(
     } catch (error: any) {
       res.status(500)
       throw new (error)
+    }
+  }
+);
+
+export const createGroupChat = asyncHandler(
+  async (req: CustomRequest, res: Response) => {
+    const { teamId, groupName, teamColor } = req.body;
+    const adminId = req.user.id;
+
+    if (!teamId || !groupName) {
+      res.status(400).json({ message: "Team ID and group name are required." });
+      return;
+    }
+
+    try {
+      // Verify the user is the team owner
+      const team = await Team.findById(teamId);
+      if (!team) {
+        res.status(404).json({ message: "Team not found." });
+        return;
+      }
+
+      if (team.owner_id.toString() !== adminId) {
+        res.status(403).json({ message: "Only the team owner can create a group chat." });
+        return;
+      }
+
+      // Check if a group chat already exists for this team
+      const existingChat = await Chat.findOne({ teamId, isGroup: true });
+      if (existingChat) {
+        res.status(200).json({ message: "Group chat already exists.", data: existingChat, isExisting: true });
+        return;
+      }
+
+      // Get all team members
+      const teamMembers = await TeamMember.find({ team_id: teamId });
+      const memberUserIds = teamMembers.map((member: any) => member.user_id.toString());
+
+      // Include the owner in the members list
+      const allMembers = [adminId, ...memberUserIds];
+      // Remove duplicates (in case owner is also in team members)
+      const uniqueMembers = [...new Set(allMembers)];
+
+      // Create the group chat
+      const newChat = new Chat({
+        members: uniqueMembers,
+        isGroup: true,
+        groupName,
+        admin: adminId,
+        teamId,
+        teamColor: teamColor || team.teamColor,
+      });
+
+      const response = await newChat.save();
+      res.status(201).json({ message: "Group chat created successfully.", data: response, isExisting: false });
+    } catch (error: any) {
+      console.error("Error creating group chat:", error);
+      res.status(500).json({ message: "Error creating group chat." });
     }
   }
 );

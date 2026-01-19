@@ -5,6 +5,8 @@ interface IChat {
   isGroup?: boolean;
   groupName?: string;
   admin?: string; // could be the ID of the user who created the group
+  teamId?: string; // link to the team for team-based group chats
+  teamColor?: string; // team's display color
 }
 
 const chatSchema = new Schema<IChat>(
@@ -21,6 +23,12 @@ const chatSchema = new Schema<IChat>(
       type: String
     },
     admin: {
+      type: String
+    },
+    teamId: {
+      type: String
+    },
+    teamColor: {
       type: String
     }
   },
