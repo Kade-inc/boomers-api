@@ -3,6 +3,7 @@ import express from "express";
 import validateToken from "../middleware/validateTokenHandler";
 import {
   createChat,
+  createGroupChat,
   deleteChat,
   findChat,
   findChatByChatId,
@@ -14,6 +15,7 @@ const chatRouter = express.Router();
 chatRouter.use(validateToken);
 
 chatRouter.post("/", createChat);
+chatRouter.post("/group", createGroupChat);
 
 // Example route: GET /chats/find?members=firstId,secondId,thirdId
 chatRouter.get("/find", findChat);
