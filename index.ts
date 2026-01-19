@@ -96,6 +96,25 @@ io.on("connection", (socket) => {
   socket.on("disconnect", () => {
     console.log(`Socket disconnected: ${socket.id}`);
   });
+
+  // Chat-specific events
+  socket.on("joinChat", ({ chatId }) => {
+    socket.join(`chat_${chatId}`);
+    console.log(`Socket ${socket.id} joined chat room ${chatId}`);
+  });
+
+  socket.on("leaveChat", ({ chatId }) => {
+    socket.leave(`chat_${chatId}`);
+    console.log(`Socket ${socket.id} left chat room ${chatId}`);
+  });
+
+  socket.on("typing", ({ chatId, userId }) => {
+    socket.to(`chat_${chatId}`).emit("userTyping", { userId });
+  });
+
+  socket.on("stopTyping", ({ chatId, userId }) => {
+    socket.to(`chat_${chatId}`).emit("userStoppedTyping", { userId });
+  });
 });
 
 

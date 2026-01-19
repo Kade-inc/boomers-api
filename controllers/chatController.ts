@@ -2,6 +2,7 @@ import asyncHandler from "express-async-handler";
 import { CustomRequest } from "../middleware/validateTokenHandler";
 import { Response } from "express";
 import Chat from "../models/chatModel";
+import Message from "../models/messageModel";
 
 // createchat
 // findUserChats
@@ -29,7 +30,7 @@ export const createChat = asyncHandler(
         res
           .status(400)
           .json({ message: "One-to-one chat must have exactly 2 members." });
-        return 
+        return
       }
     }
 
@@ -60,9 +61,9 @@ export const createChat = asyncHandler(
       const response = await newChat.save();
 
       res.status(201).json(response);
-    } catch (error:any) {
+    } catch (error: any) {
       res.status(500)
-      throw new(error)
+      throw new (error)
     }
   }
 );
@@ -79,9 +80,29 @@ export const findUserChats = asyncHandler(
     try {
       const chats = await Chat.find({
         members: { $in: [userId] },
+      }).lean();
+
+      // Get the last message for each chat
+      const chatsWithLastMessage = await Promise.all(
+        chats.map(async (chat: any) => {
+          const lastMessage = await Message.findOne({ chatId: chat._id })
+            .sort({ createdAt: -1 })
+            .lean();
+          return {
+            ...chat,
+            lastMessage: lastMessage || null,
+          };
+        })
+      );
+
+      // Sort chats by last message time (most recent first)
+      chatsWithLastMessage.sort((a: any, b: any) => {
+        const aTime = a.lastMessage?.createdAt || a.createdAt;
+        const bTime = b.lastMessage?.createdAt || b.createdAt;
+        return new Date(bTime).getTime() - new Date(aTime).getTime();
       });
 
-      res.status(200).json({message: "Chats retrieved successfully.", data: chats});
+      res.status(200).json({ message: "Chats retrieved successfully.", data: chatsWithLastMessage });
     } catch (error) {
       console.log(error);
       res.status(500).json(error);
@@ -117,9 +138,9 @@ export const findChat = asyncHandler(
       });
 
       res.status(200).json(chat);
-    } catch (error:any) {
+    } catch (error: any) {
       res.status(500)
-      throw new(error)
+      throw new (error)
     }
   }
 );
@@ -168,9 +189,9 @@ export const updateChat = asyncHandler(
       // Save the updated chat
       const updatedChat = await chat.save();
       res.status(200).json(updatedChat);
-    } catch (error:any) {
+    } catch (error: any) {
       res.status(500)
-      throw new(error)
+      throw new (error)
     }
   }
 );
@@ -185,9 +206,9 @@ export const findChatByChatId = asyncHandler(
         return
       }
       res.status(200).json({ message: "Chat details retrieved successfully.", data: chat });
-    } catch (error:any) {
+    } catch (error: any) {
       res.status(500)
-      throw new(error)
+      throw new (error)
     }
   }
 );
@@ -196,8 +217,8 @@ export const deleteChat = asyncHandler(
   async (req: CustomRequest, res: Response) => {
     const { chatId } = req.params;
     const ownerId = req.user.id
-    
-    
+
+
     try {
       const chat = await Chat.findById(chatId);
 
@@ -213,9 +234,9 @@ export const deleteChat = asyncHandler(
       // Delete the chat
       await chat.deleteOne()
       res.status(200).json({ message: "Chat deleted successfully." });
-    } catch (error:any) {
+    } catch (error: any) {
       res.status(500)
-      throw new(error)
+      throw new (error)
     }
   }
 );

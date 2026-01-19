@@ -33,6 +33,10 @@ export const createMessage = asyncHandler(
         senderId,
         text,
       });
+
+      // Emit new message to all users in the chat room
+      req.app.locals.io.to(`chat_${chatId}`).emit("newMessage", response);
+
       res.status(201).json(response);
     } catch (error) {
       console.log(error);
@@ -108,7 +112,7 @@ export const deleteMessage = asyncHandler(
         res
           .status(403)
           .json({ message: "Unauthorized to delete this message." });
-          return
+        return
       }
 
       // Delete the message
