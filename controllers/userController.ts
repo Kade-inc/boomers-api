@@ -712,6 +712,61 @@ function generateRandomNumber(): string {
   return generateRandomNumber.toString();
 }
 
+//@desc Delete a user (soft delete with cascade)
+//@route DELETE /api/users/:id
+//access private
+export const deleteUser = asyncHandler(
+  async (req: CustomRequest, res: Response) => {
+    try {
+      const userIdToDelete = req.params.id;
+      const requestingUserId = req.user.id;
 
+      // Check if user exists
+      const userToDelete = await User.findById(userIdToDelete);
+      if (!userToDelete) {
+        res.status(404).json({ message: "User not found" });
+        return;
+      }
+
+      // Check if user is already deleted
+      if (userToDelete.deletedAt) {
+        res.status(400).json({ message: "User is already deleted" });
+        return;
+      }
+
+      // Check authorization: user can only delete themselves, or admin can delete others
+      const requestingUser = await User.findById(requestingUserId).populate("role");
+      const isAdmin = requestingUser?.role &&
+        (requestingUser.role as any).name === "superadmin";
+
+      if (requestingUserId !== userIdToDelete && !isAdmin) {
+        res.status(403).json({ message: "Not authorized to delete this user" });
+        return;
+      }
+
+      // Mark user as deleted immediately (fast operation)
+      const { markUserAsDeleted } = await import("../services/userDeletionService");
+      await markUserAsDeleted(userIdToDelete);
+
+      // Queue the full deletion for async processing
+      const { queueUserDeletion } = await import("../services/userDeletionQueue");
+      const jobId = await queueUserDeletion(userIdToDelete, requestingUserId);
+
+      // Return 202 Accepted - deletion initiated but processing async
+      res.status(202).json({
+        message: "User deletion initiated",
+        data: {
+          userId: userIdToDelete,
+          jobId: jobId,
+          deletedAt: new Date(),
+          status: "processing",
+        },
+      });
+    } catch (error: any) {
+      console.error("Error initiating user deletion:", error);
+      res.status(500).json({ message: "Error initiating user deletion", error: error.message });
+    }
+  }
+);
 
 export default registerUser;

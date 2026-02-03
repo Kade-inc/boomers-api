@@ -9,6 +9,7 @@ interface IUser {
   username: string;
   role: Schema.Types.ObjectId;
   pushTokens: string[];
+  deletedAt: Date | null;
 }
 
 const userSchema = new Schema<IUser>(
@@ -47,6 +48,10 @@ const userSchema = new Schema<IUser>(
     pushTokens: {
       type: [String],
       required: false
+    },
+    deletedAt: {
+      type: Date,
+      default: null,
     },
   },
   {

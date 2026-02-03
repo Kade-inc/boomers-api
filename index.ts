@@ -10,6 +10,8 @@ import dotenv from "dotenv";
 
 // Import email worker to start processing email jobs
 import "./workers/emailWorker";
+// Import user deletion worker to start processing deletion jobs
+import "./workers/userDeletionWorker";
 
 import userRouter from "./routes/userRoutes";
 import userProfileRouter from "./routes/userProfileRoutes";
