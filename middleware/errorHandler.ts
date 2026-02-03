@@ -1,33 +1,6 @@
 import { Request, Response } from "express";
 import { constants } from "../constants";
-import winston from "winston";
-import "winston-daily-rotate-file";
-
-const { combine, timestamp, json } = winston.format;
-
-// Configure Winston logger
-const logger = winston.createLogger({
-  level: "error",
-  format: combine(timestamp(), json()),
-  transports: [
-    // Daily rotate file transport
-    new winston.transports.DailyRotateFile({
-      filename: "logs/error-%DATE%.log",
-      datePattern: "YYYY-MM-DD",
-      maxSize: "20m", // Rotate when file reaches 20MB
-      maxFiles: "30d", // Keep logs for 30 days
-      zippedArchive: true, // Compress rotated files
-      format: combine(timestamp(), json()),
-    }),
-    // Console transport for development
-    new winston.transports.Console({
-      format: winston.format.combine(
-        winston.format.colorize(),
-        winston.format.simple()
-      ),
-    }),
-  ],
-});
+import logger from "../services/logger";
 
 export const errorHandler = (
   err: any,
@@ -36,7 +9,7 @@ export const errorHandler = (
   next: any
 ) => {
   const statusCode = res.statusCode ? res.statusCode : 500;
-  
+
   // Log error with additional context
   logger.error({
     message: err.message,
