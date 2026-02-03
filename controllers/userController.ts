@@ -748,9 +748,14 @@ export const deleteUser = asyncHandler(
       const { markUserAsDeleted } = await import("../services/userDeletionService");
       await markUserAsDeleted(userIdToDelete);
 
-      // Queue the full deletion for async processing
+      // Queue the full deletion for async processing (include original email for notification)
       const { queueUserDeletion } = await import("../services/userDeletionQueue");
-      const jobId = await queueUserDeletion(userIdToDelete, requestingUserId);
+      const jobId = await queueUserDeletion(
+        userIdToDelete,
+        userToDelete.email || "",
+        userToDelete.username,
+        requestingUserId
+      );
 
       // Return 202 Accepted - deletion initiated but processing async
       res.status(202).json({

@@ -3,7 +3,9 @@ import { redisConnection } from "../config/redis";
 
 export interface UserDeletionJobData {
     userId: string;
-    requestedBy: string;  // ID of user who requested the deletion
+    userEmail: string;      // Original email (before anonymization) for sending notification
+    username: string;       // Username for personalized email
+    requestedBy: string;    // ID of user who requested the deletion
     requestedAt: Date;
 }
 
@@ -24,14 +26,20 @@ export const userDeletionQueue = new Queue<UserDeletionJobData>("user-deletion",
 /**
  * Queue a user deletion to be processed asynchronously
  * @param userId - ID of user to delete
+ * @param userEmail - Original email of the user (for notification)
+ * @param username - Username of the user (for personalized email)
  * @param requestedBy - ID of user who requested the deletion
  */
 export const queueUserDeletion = async (
     userId: string,
+    userEmail: string,
+    username: string,
     requestedBy: string
 ): Promise<string> => {
     const job = await userDeletionQueue.add("delete-user", {
         userId,
+        userEmail,
+        username,
         requestedBy,
         requestedAt: new Date(),
     });
