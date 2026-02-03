@@ -125,3 +125,66 @@ export const deleteMessage = asyncHandler(
   }
 );
 
+// Create a chat and send the first message atomically
+// This enables lazy chat creation where chats are only created when a message is sent
+export const createMessageWithChat = asyncHandler(
+  async (req: CustomRequest, res: Response) => {
+    const senderId = req.user.id;
+    const { recipientId, text } = req.body;
+
+    if (!recipientId || !text) {
+      res.status(400).json({ message: "Recipient ID and message text are required." });
+      return;
+    }
+
+    try {
+      const members = [senderId, recipientId];
+
+      // Check if a chat already exists between these members
+      let chat = await Chat.findOne({
+        members: { $all: members },
+        $expr: { $eq: [{ $size: "$members" }, 2] },
+        isGroup: false,
+      });
+
+      let isNewChat = false;
+
+      // If no chat exists, create one
+      if (!chat) {
+        chat = new Chat({
+          members,
+          isGroup: false,
+        });
+        await chat.save();
+        isNewChat = true;
+      }
+
+      // Create the message
+      const message = await Message.create({
+        chatId: chat._id,
+        senderId,
+        text,
+      });
+
+      // Emit new message to all users in the chat room
+      req.app.locals.io.to(`chat_${chat._id}`).emit("newMessage", message);
+
+      // If this is a new chat, also emit a newChat event so the recipient's chat list updates
+      if (isNewChat) {
+        // Emit to both users so they can update their chat lists
+        members.forEach((memberId) => {
+          req.app.locals.io.to(`user_${memberId}`).emit("newChat", chat);
+        });
+      }
+
+      res.status(201).json({
+        chat,
+        message,
+        isNewChat,
+      });
+    } catch (error) {
+      console.log(error);
+      res.status(500).json(error);
+    }
+  }
+);
