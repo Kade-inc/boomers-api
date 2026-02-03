@@ -20,6 +20,21 @@ import {
 import TeamMemberRequest from "../models/teamMemberRequestModel";
 import ChallengeStepComment from "../models/challengeStepCommentModel";
 import logger from "./logger";
+import { S3Client, DeleteObjectCommand } from "@aws-sdk/client-s3";
+import dotenv from "dotenv";
+
+dotenv.config();
+
+// S3 client for deleting profile pictures
+const s3 = new S3Client({
+    credentials: {
+        accessKeyId: process.env.ACCESS_KEY as string,
+        secretAccessKey: process.env.SECRET_ACCESS_KEY as string,
+    },
+    region: process.env.BUCKET_REGION as string,
+});
+
+const bucketName = process.env.BUCKET_NAME as string;
 
 /**
  * User Deletion Service
@@ -60,9 +75,34 @@ const orphanUserTeams = async (userId: string): Promise<void> => {
 };
 
 /**
- * Delete user's profile (idempotent - safe to run multiple times)
+ * Delete user's profile picture from S3
+ */
+const deleteProfilePictureFromS3 = async (imageKey: string): Promise<void> => {
+    try {
+        const deleteParams = {
+            Bucket: bucketName,
+            Key: imageKey,
+        };
+        await s3.send(new DeleteObjectCommand(deleteParams));
+        logger.info(`Deleted profile picture from S3: ${imageKey}`);
+    } catch (error) {
+        // Log but don't fail if S3 deletion fails (image might already be deleted)
+        logger.warn(`Failed to delete profile picture from S3: ${imageKey}`, error);
+    }
+};
+
+/**
+ * Delete user's profile and profile picture (idempotent - safe to run multiple times)
  */
 const deleteUserProfile = async (userId: string): Promise<void> => {
+    // First, get the profile to check for profile picture
+    const profile = await UserProfile.findOne({ user_id: new mongoose.Types.ObjectId(userId) });
+
+    if (profile?.profile_picture) {
+        await deleteProfilePictureFromS3(profile.profile_picture);
+    }
+
+    // Then delete the profile from database
     const result = await UserProfile.deleteMany({ user_id: new mongoose.Types.ObjectId(userId) });
     logger.info(`Deleted ${result.deletedCount} profile(s) for user ${userId}`);
 };
