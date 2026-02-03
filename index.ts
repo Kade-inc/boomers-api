@@ -78,26 +78,11 @@ app.locals.io = io;
 io.on("connection", (socket) => {
   console.log(`Socket connected: ${socket.id}`);
 
-  socket.on("joinUser", ({ userId }) => {
-    socket.join(userId);
-    console.log(`Socket ${socket.id} joined personal room for user ${userId}`);
-  });
-
-  socket.on("joinTeam", ({ teamId }) => {
-    socket.join(`team_${teamId}`);
-    console.log(`Socket ${socket.id} joined room team_${teamId}`);
-  });
-
-  socket.on("joinChallenge", ({ challengeId }) => {
-    socket.join(challengeId);
-    console.log(`Socket ${socket.id} joined room challenge_${challengeId}`);
-  });
-
   socket.on("disconnect", () => {
     console.log(`Socket disconnected: ${socket.id}`);
   });
 
-  // Chat-specific events
+  // Chat-specific events only (notifications now use SSE)
   socket.on("joinChat", ({ chatId }) => {
     socket.join(`chat_${chatId}`);
     console.log(`Socket ${socket.id} joined chat room ${chatId}`);

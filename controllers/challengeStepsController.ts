@@ -10,6 +10,7 @@ import SolutionComment from "../models/solutionCommentModel";
 import ChallengeStepComment from "../models/challengeStepCommentModel";
 import Notification from "../models/notificationModel";
 import { Types } from "mongoose";
+import sseNotificationService from "../services/sseService";
 
 interface PopulatedStepComment {
   user: {
@@ -317,7 +318,7 @@ export const postSolutionStepComment = asyncHandler(
           }
         }) as PopulatedStepComment;
 
-        const username = populatedStepComment.user.profile.firstName && populatedStepComment.user.profile.lastName 
+        const username = populatedStepComment.user.profile.firstName && populatedStepComment.user.profile.lastName
           ? `${populatedStepComment.user.profile.firstName} ${populatedStepComment.user.profile.lastName}`
           : populatedStepComment.user.profile.username;
 
@@ -356,7 +357,7 @@ export const postSolutionStepComment = asyncHandler(
 
         // Create a Set of all users to notify (previous commenters + solution creator)
         const usersToNotify = new Set([...previousComments].map(comment => comment.user.toString()));
-        
+
         // Add solution creator if they're not the one commenting
         if ((step.solution_id as any).user_id._id.toString() !== req.user.id) {
           usersToNotify.add((step.solution_id as any).user_id._id.toString());
@@ -383,10 +384,10 @@ export const postSolutionStepComment = asyncHandler(
               subreference: step.solution_id,
               subreferenceModel: "ChallengeStep",
             });
-          
-            const io = req.app.locals.io;
-            io.to(userId).emit("pushNotification", notification);
-            console.log("Notification emitted to user's room " + userId, notification);
+
+            // Send notification via SSE
+            sseNotificationService.sendNotification(userId, notification);
+            console.log("Notification sent via SSE to user " + userId, notification);
           } catch (error) {
             console.error("Error creating notification for userId:", userId, error);
           }

@@ -7,6 +7,7 @@ import TeamMember from "../../models/teamMemberModel";
 import Notification from "../../models/notificationModel";
 import ChallengeComment from "../../models/challengeCommentModel";
 import crypto from "crypto";
+import sseNotificationService from "../../services/sseService";
 
 interface MulterRequest extends Request {
   file: Express.Multer.File;
@@ -106,9 +107,9 @@ export const getAllTeamChallenges = asyncHandler(
         const challenges = await TeamChallenge.find({
           team_id: req.params.teamId,
         });
-        
-          res.status(200).json({ message: "successful", data: challenges });
-        
+
+        res.status(200).json({ message: "successful", data: challenges });
+
       }
     } catch (error: any) {
       console.log(error);
@@ -291,7 +292,7 @@ export const postChallengeComment = asyncHandler(
 
         console.log("USERNAME: ", username)
 
-        
+
         for (const member of membersToNotify) {
           const notification = await Notification.create({
             user: member.user_id,
@@ -299,12 +300,11 @@ export const postChallengeComment = asyncHandler(
             reference: challenge_id,
             referenceModel: "ChallengeComment",
           });
-        
-          const io = req.app.locals.io;
-          // Emit notification only to the specific user's room using the user ID
+
+          // Send notification via SSE
           const userId = member.user_id._id ? member.user_id._id.toString() : member.user_id.toString();
-          io.to(userId).emit("pushNotification", notification);
-          console.log("Notification emitted to user room " + userId, notification);
+          sseNotificationService.sendNotification(userId, notification);
+          console.log("Notification sent via SSE to user " + userId, notification);
         }
 
         res.status(201).json({ message: "successful", data: challengeComment });
@@ -402,7 +402,7 @@ export const getChallengeComments = asyncHandler(
 
       // Fetch challenge comments with nested population
       const challengeComments = await ChallengeComment.find({ challenge_id })
-        .sort({ createdAt: sortOrder }) 
+        .sort({ createdAt: sortOrder })
         .populate({
           path: "user", // Populate the `user` field in ChallengeComment
           model: "User", // Explicitly reference the `User` model
@@ -417,7 +417,7 @@ export const getChallengeComments = asyncHandler(
       // Add S3 prefix to profile_picture
       const data = challengeComments.map((comment: any) => {
         const userProfile = comment.user?.profile;
-      
+
         if (userProfile?.profile_picture) {
           // Only add the S3 prefix if it is not already included
           if (!userProfile.profile_picture.startsWith(process.env.S3_BUCKET_PREFIX)) {
@@ -426,9 +426,9 @@ export const getChallengeComments = asyncHandler(
         } else {
           comment.user.profile = null; // Handle missing profiles
         }
-      
+
         return comment;
-      });      
+      });
 
       res.status(200).json({ message: "successful", data });
     } catch (error: any) {
@@ -527,7 +527,7 @@ export const createTeamChallengeV2 = asyncHandler(
         throw new Error("User does not own the team");
       }
 
-      const currentDraftChallenges = await TeamChallenge.find({ owner_id: req.user.id, valid:false })
+      const currentDraftChallenges = await TeamChallenge.find({ owner_id: req.user.id, valid: false })
 
       if (currentDraftChallenges.length > 4) {
         res.status(400)
@@ -557,15 +557,15 @@ export const updateIndividualTeamChallengeV2 = asyncHandler(
       if (!team) {
         res.status(404).json({ message: "Team not found" });
         return
-      } 
-      
+      }
+
       if (req.user.id !== team.owner_id.toString()) {
         res.status(403).json({ message: "User does not own this team" });
         return
-      } 
-      
-     
-      const challenge:any = await TeamChallenge.findById({
+      }
+
+
+      const challenge: any = await TeamChallenge.findById({
         _id: req.params.challengeId,
       }).populate({
         path: "team_id",
@@ -576,7 +576,7 @@ export const updateIndividualTeamChallengeV2 = asyncHandler(
       if (!challenge) {
         res.status(404).json({ message: "Challenge not found" });
         return
-      } 
+      }
 
       // Validation for due_date and difficulty
       const { due_date, difficulty, valid } = req.body;
@@ -606,7 +606,7 @@ export const updateIndividualTeamChallengeV2 = asyncHandler(
         const membersToNotify = teamMembers.filter(
           (member) => member.user_id.toString() !== req.user.id
         );
-        
+
         for (const member of membersToNotify) {
           const notification = await Notification.create({
             user: member.user_id,
@@ -614,26 +614,25 @@ export const updateIndividualTeamChallengeV2 = asyncHandler(
             reference: challenge._id,
             referenceModel: "TeamChallenge",
           });
-        
-          const io = req.app.locals.io;
-          // Emit notification only to the individual user's room.
-          io.to(member.user_id.toString()).emit("pushNotification", notification);
-          console.log("Notification emitted to user room " + member.user_id.toString(), notification);
+
+          // Send notification via SSE
+          sseNotificationService.sendNotification(member.user_id.toString(), notification);
+          console.log("Notification sent via SSE to user " + member.user_id.toString(), notification);
         }
       }
 
       res
         .status(200)
         .json({ message: "Update successful", data: updatedChallenge });
-      
-        
+
+
     } catch (error: any) {
       console.log(error);
       res.status(500)
-      throw new(error)
+      throw new (error)
     }
   }
-);            
+);
 
 
 // @desc Delete Multiple Specific Team Challenges

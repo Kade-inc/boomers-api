@@ -1,10 +1,11 @@
 import express from "express";
 import validateToken from "../middleware/validateTokenHandler";
-import { getNotificationById, getUserNotifications, markAllNotificationsAsRead, updateNotificationStatus } from "../controllers/notificationsController";
+import { getNotificationById, getUserNotifications, markAllNotificationsAsRead, updateNotificationStatus, sseStream } from "../controllers/notificationsController";
 
 const notificationRouter = express.Router();
 notificationRouter.use(validateToken);
 
+notificationRouter.get("/stream", sseStream)  // SSE endpoint - must be before /:id
 notificationRouter.get("/", getUserNotifications)
 notificationRouter.patch("/read-all", markAllNotificationsAsRead)
 notificationRouter.get("/:id", getNotificationById)

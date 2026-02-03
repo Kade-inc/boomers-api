@@ -10,6 +10,7 @@ import TeamMemberRequest from "../../models/teamMemberRequestModel";
 import UserProfile from "../../models/userProfileModel";
 import { Types, Document } from "mongoose";
 import Notification from "../../models/notificationModel";
+import sseNotificationService from "../../services/sseService";
 
 interface PopulatedUser extends Document {
   _id: Types.ObjectId;
@@ -98,10 +99,10 @@ export const addTeamMember = asyncHandler(
         referenceModel: "Team",
       });
 
-      const io = req.app.locals.io;
-      io.to(userExists._id.toString()).emit("pushNotification", notification);
+      // Send notification via SSE
+      sseNotificationService.sendNotification(userExists._id.toString(), notification);
       console.log(
-        "Notification emitted to user's room " + userExists._id.toString(),
+        "Notification sent via SSE to user " + userExists._id.toString(),
         notification
       );
 
@@ -207,13 +208,10 @@ export const joinTeam = asyncHandler(
         subreferenceModel: "TeamMemberRequest",
       });
 
-      const io = req.app.locals.io;
-      io.to(teamExists.owner_id.toString()).emit(
-        "pushNotification",
-        notification
-      );
+      // Send notification via SSE
+      sseNotificationService.sendNotification(teamExists.owner_id.toString(), notification);
       console.log(
-        "Notification emitted to team owner's room " +
+        "Notification sent via SSE to team owner " +
         teamExists.owner_id.toString(),
         notification
       );
@@ -320,13 +318,10 @@ export const updateJoinRequest = asyncHandler(
         subreferenceModel: "TeamMemberRequest",
       });
 
-      const io = req.app.locals.io;
-      io.to(memberRequest.user_id.toString()).emit(
-        "pushNotification",
-        notification
-      );
+      // Send notification via SSE
+      sseNotificationService.sendNotification(memberRequest.user_id.toString(), notification);
       console.log(
-        "Notification emitted to user's room " +
+        "Notification sent via SSE to user " +
         memberRequest.user_id.toString(),
         notification
       );
@@ -380,13 +375,10 @@ export const deleteTeamMember = asyncHandler(
         subreferenceModel: "RemoveTeamMember",
       });
 
-      const io = req.app.locals.io;
-      io.to(teamMember.user_id.toString()).emit(
-        "pushNotification",
-        notification
-      );
+      // Send notification via SSE
+      sseNotificationService.sendNotification(teamMember.user_id.toString(), notification);
       console.log(
-        "Notification emitted to user's room " + teamMember.user_id.toString(),
+        "Notification sent via SSE to user " + teamMember.user_id.toString(),
         notification
       );
 

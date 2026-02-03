@@ -11,6 +11,7 @@ import SolutionComment from "../models/solutionCommentModel";
 import SolutionRating from "../models/solutionRatingModel";
 import Notification from "../models/notificationModel";
 import { Types, Document } from "mongoose";
+import sseNotificationService from "../services/sseService";
 
 interface PopulatedUser {
   _id: Types.ObjectId;
@@ -129,7 +130,7 @@ export const updateChallengeSolution = asyncHandler(
           select: 'firstName lastName username'
         }
       }).lean();
-    
+
 
       const challenge = await TeamChallenge.findById({
         _id: req.params.id,
@@ -166,24 +167,23 @@ export const updateChallengeSolution = asyncHandler(
             return;
           }
           completedDate = new Date();
-  
-            const username = (initialChallengeSolution.user_id as any).profile.firstName ? `${(initialChallengeSolution.user_id as any).profile.firstName} ${(initialChallengeSolution.user_id as any).profile.lastName}` : (initialChallengeSolution.user_id as any).profile.username;
-        
-              const notification = await Notification.create({
-                user: challenge.owner_id,
-                message: `${username} has submitted a solution for the challenge: "${challenge.challenge_name}".`,
-                reference: challenge._id,
-                referenceModel: "TeamChallenge",
-                subreference: solutionId,
-                subreferenceModel: "ChallengeSolution",
-              });
-            
-              const io = req.app.locals.io;
-              // Emit notification only to the challenge owner's personal room
-              io.to(challenge.owner_id.toString()).emit("pushNotification", notification);
-              console.log("Notification emitted to challenge owner's room " + challenge.owner_id.toString(), notification);
-            
-  
+
+          const username = (initialChallengeSolution.user_id as any).profile.firstName ? `${(initialChallengeSolution.user_id as any).profile.firstName} ${(initialChallengeSolution.user_id as any).profile.lastName}` : (initialChallengeSolution.user_id as any).profile.username;
+
+          const notification = await Notification.create({
+            user: challenge.owner_id,
+            message: `${username} has submitted a solution for the challenge: "${challenge.challenge_name}".`,
+            reference: challenge._id,
+            referenceModel: "TeamChallenge",
+            subreference: solutionId,
+            subreferenceModel: "ChallengeSolution",
+          });
+
+          // Send notification via SSE
+          sseNotificationService.sendNotification(challenge.owner_id.toString(), notification);
+          console.log("Notification sent via SSE to challenge owner " + challenge.owner_id.toString(), notification);
+
+
         }
 
         const updatedSolution = await ChallengeSolution.findByIdAndUpdate(
@@ -276,7 +276,7 @@ export const getAllChallengeSolutions = asyncHandler(
             return doc;
           }
         },
-       
+
       });
 
       // Transform the response to rename user_id to user
@@ -387,9 +387,9 @@ export const postSolutionComment = asyncHandler(
         }) as PopulatedSolutionComment;
 
         console.log("populatedSolutionComment", populatedSolutionComment);
-        
+
         const username = populatedSolutionComment.user.profile.firstName && populatedSolutionComment.user.profile.lastName ? `${populatedSolutionComment.user.profile.firstName} ${populatedSolutionComment.user.profile.lastName}` : populatedSolutionComment.user.profile.username;
-        
+
         // Get the solution to find its creator
         const solution = await ChallengeSolution.findById(req.params.solutionId)
           .populate({
@@ -408,7 +408,7 @@ export const postSolutionComment = asyncHandler(
           return;
         }
 
-        const solutionCreatorName = (solution.user_id as any).profile.firstName && (solution.user_id as any).profile.lastName 
+        const solutionCreatorName = (solution.user_id as any).profile.firstName && (solution.user_id as any).profile.lastName
           ? `${(solution.user_id as any).profile.firstName} ${(solution.user_id as any).profile.lastName}`
           : (solution.user_id as any).profile.username;
 
@@ -420,7 +420,7 @@ export const postSolutionComment = asyncHandler(
 
         // Create a Set of all users to notify (previous commenters + solution creator)
         const usersToNotify = new Set([...previousComments].map(comment => comment.user.toString()));
-        
+
         // Add solution creator if they're not the one commenting
         if (solution.user_id.toString() !== req.user.id) {
           usersToNotify.add(solution.user_id.toString());
@@ -449,10 +449,10 @@ export const postSolutionComment = asyncHandler(
               reference: challenge_id,
               referenceModel: "SolutionComment",
             });
-          
-            const io = req.app.locals.io;
-            io.to(userId).emit("pushNotification", notification);
-            console.log("Notification emitted to user's room " + userId, notification);
+
+            // Send notification via SSE
+            sseNotificationService.sendNotification(userId, notification);
+            console.log("Notification sent via SSE to user " + userId, notification);
           } catch (error) {
             console.error("Error creating notification for userId:", userId, error);
           }
@@ -548,7 +548,7 @@ export const getSolutionComments = asyncHandler(
         return;
       }
 
-      const solutionComments = await SolutionComment.find({solution_id: req.params.solutionId}).populate({
+      const solutionComments = await SolutionComment.find({ solution_id: req.params.solutionId }).populate({
         path: 'user',
         select: '_id',
         populate: {
@@ -770,11 +770,10 @@ export const postSolutionRating = asyncHandler(
         subreference: req.params.solutionId,
         subreferenceModel: "SolutionRating",
       });
-    
-      const io = req.app.locals.io;
-      // Emit notification only to the challenge owner's personal room
-      io.to(solution.user_id.toString()).emit("pushNotification", notification);
-      console.log("Notification emitted to user's room " + solution.user_id.toString(), notification);
+
+      // Send notification via SSE
+      sseNotificationService.sendNotification(solution.user_id.toString(), notification);
+      console.log("Notification sent via SSE to user " + solution.user_id.toString(), notification);
 
       res.status(201).json({ message: "successful", data: response });
     } catch (error: any) {
