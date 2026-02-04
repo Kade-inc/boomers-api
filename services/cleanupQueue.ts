@@ -1,5 +1,6 @@
 import { Queue } from "bullmq";
 import { redisConnection } from "../config/redis";
+import logger from "./logger";
 
 export interface CleanupJobData {
     scheduledAt: Date;
@@ -36,7 +37,7 @@ export const initializeCleanupSchedule = async (): Promise<void> => {
         }
     );
 
-    console.log("[CleanupQueue] Scheduled daily user cleanup job at 3:00 AM");
+    logger.info("[CleanupQueue] Scheduled daily user cleanup job at 3:00 AM");
 };
 
 export default cleanupQueue;

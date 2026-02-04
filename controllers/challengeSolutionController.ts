@@ -12,6 +12,7 @@ import SolutionRating from "../models/solutionRatingModel";
 import Notification from "../models/notificationModel";
 import { Types, Document } from "mongoose";
 import sseNotificationService from "../services/sseService";
+import logger from "../services/logger";
 
 interface PopulatedUser {
   _id: Types.ObjectId;
@@ -107,7 +108,7 @@ export const postChallengeSolution = asyncHandler(
         }
       }
     } catch (error: any) {
-      console.log(error);
+      logger.error("Error posting challenge solution", { error });
       res.status(500).json({ error: error.message });
     }
   }
@@ -181,7 +182,7 @@ export const updateChallengeSolution = asyncHandler(
 
           // Send notification via SSE
           sseNotificationService.sendNotification(challenge.owner_id.toString(), notification);
-          console.log("Notification sent via SSE to challenge owner " + challenge.owner_id.toString(), notification);
+          logger.debug("Notification sent via SSE to challenge owner " + challenge.owner_id.toString(), { notification });
 
 
         }
@@ -199,7 +200,7 @@ export const updateChallengeSolution = asyncHandler(
         res.status(200).json({ message: "successful", data: updatedSolution });
       }
     } catch (error: any) {
-      console.log("ERRROR: ", error);
+      logger.error("Error updating challenge solution", { error });
       res.status(500).json({ error: error.message });
     }
   }
@@ -245,7 +246,7 @@ export const getChallengeSolution = asyncHandler(
 
       res.status(200).json({ message: "successful", data: responseData });
     } catch (error: any) {
-      console.log("ERROR: ", error);
+      logger.error("Error getting challenge solution", { error });
       res.status(500).json({ error: error.message });
     }
   }
@@ -290,7 +291,7 @@ export const getAllChallengeSolutions = asyncHandler(
 
       res.status(200).json({ message: "successful", data: transformedSolutions });
     } catch (error: any) {
-      console.log("ERRROR: ", error);
+      logger.error("Error getting all challenge solutions", { error });
       res.status(500).json({ error: error.message });
     }
   }
@@ -324,7 +325,7 @@ export const deleteChallengeSolution = asyncHandler(
         res.status(204).json({ message: "successful" });
       }
     } catch (error: any) {
-      console.log("ERRROR: ", error);
+      logger.error("Error deleting challenge solution", { error });
       res.status(500).json({ error: error.message });
     }
   }
@@ -386,7 +387,7 @@ export const postSolutionComment = asyncHandler(
           }
         }) as PopulatedSolutionComment;
 
-        console.log("populatedSolutionComment", populatedSolutionComment);
+        logger.debug("Populated solution comment", { populatedSolutionComment });
 
         const username = populatedSolutionComment.user.profile.firstName && populatedSolutionComment.user.profile.lastName ? `${populatedSolutionComment.user.profile.firstName} ${populatedSolutionComment.user.profile.lastName}` : populatedSolutionComment.user.profile.username;
 
@@ -428,13 +429,11 @@ export const postSolutionComment = asyncHandler(
 
         // Create notifications for all users to notify
         for (const userId of usersToNotify) {
-          console.log("Processing userId:", userId);
-          console.log("userId type:", typeof userId);
-          console.log("userId length:", userId.length);
+          logger.debug("Processing userId:", { userId, type: typeof userId, length: userId.length });
 
           // Validate that userId is a valid 24-character hex string
           if (!/^[0-9a-fA-F]{24}$/.test(userId)) {
-            console.error("Invalid userId format:", userId);
+            logger.error("Invalid userId format:", { userId });
             continue;
           }
 
@@ -452,16 +451,16 @@ export const postSolutionComment = asyncHandler(
 
             // Send notification via SSE
             sseNotificationService.sendNotification(userId, notification);
-            console.log("Notification sent via SSE to user " + userId, notification);
+            logger.debug("Notification sent via SSE to user " + userId, { notification });
           } catch (error) {
-            console.error("Error creating notification for userId:", userId, error);
+            logger.error("Error creating notification for userId:", { userId, error });
           }
         }
 
         res.status(201).json({ message: "successful", data: solutionComment });
       }
     } catch (error: any) {
-      console.log(error);
+      logger.error("Error posting solution comment", { error });
       res.status(500).json({ error: error.message });
     }
   }
@@ -526,7 +525,7 @@ export const updateSolutionComment = asyncHandler(
         res.status(200).json({ message: "successful", data: updatedComment });
       }
     } catch (error: any) {
-      console.log(error);
+      logger.error("Error updating solution comment", { error });
       res.status(500).json({ error: error.message });
     }
   }
@@ -565,7 +564,7 @@ export const getSolutionComments = asyncHandler(
 
       res.status(200).json({ message: "successful", data: solutionComments });
     } catch (error: any) {
-      console.log(error);
+      logger.error("Error getting solution comments", { error });
       res.status(500).json({ error: error.message });
     }
   }
@@ -612,7 +611,7 @@ export const getSolutionComment = asyncHandler(
 
       res.status(200).json({ message: "successful", data: solutionComment });
     } catch (error: any) {
-      console.log(error);
+      logger.error("Error getting solution comment", { error });
       res.status(500).json({ error: error.message });
     }
   }
@@ -652,7 +651,7 @@ export const deleteSolutionComment = asyncHandler(
 
       res.status(204).json({ message: "successful" });
     } catch (error: any) {
-      console.log(error);
+      logger.error("Error deleting solution comment", { error });
       res.status(500).json({ error: error.message });
     }
   }
@@ -773,7 +772,7 @@ export const postSolutionRating = asyncHandler(
 
       // Send notification via SSE
       sseNotificationService.sendNotification(solution.user_id.toString(), notification);
-      console.log("Notification sent via SSE to user " + solution.user_id.toString(), notification);
+      logger.debug("Notification sent via SSE to user " + solution.user_id.toString(), { notification });
 
       res.status(201).json({ message: "successful", data: response });
     } catch (error: any) {
@@ -812,7 +811,7 @@ export const getSolutionRatings = asyncHandler(
 
       res.status(200).json({ message: "successful", data: response });
     } catch (error: any) {
-      console.log(error);
+      logger.error("Error getting solution ratings", { error });
       res.status(500).json({ error: error.message });
     }
   }
@@ -846,7 +845,7 @@ export const getSolutionRating = asyncHandler(
 
       res.status(200).json({ message: "successful", data: response });
     } catch (error: any) {
-      console.log(error);
+      logger.error("Error getting solution rating", { error });
       res.status(500).json({ error: error.message });
     }
   }
@@ -938,7 +937,7 @@ export const updateSolutionRating = asyncHandler(
 
       res.status(200).json({ message: "successful", data: response });
     } catch (error: any) {
-      console.log(error);
+      logger.error("Error updating solution rating", { error });
       res.status(500).json({ error: error.message });
     }
   }

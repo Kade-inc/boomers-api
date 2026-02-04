@@ -5,6 +5,7 @@ import { Server } from "socket.io"; // Import Socket.IO
 import { errorHandler } from "./middleware/errorHandler";
 import connectDb from "./config/dbConnection";
 import swaggerDocs from "./swagger";
+import logger from "./services/logger";
 
 import dotenv from "dotenv";
 
@@ -81,21 +82,21 @@ app.locals.io = io;
 // Set up Socket.IO connection events
 
 io.on("connection", (socket) => {
-  console.log(`Socket connected: ${socket.id}`);
+  logger.debug(`Socket connected: ${socket.id}`);
 
   socket.on("disconnect", () => {
-    console.log(`Socket disconnected: ${socket.id}`);
+    logger.debug(`Socket disconnected: ${socket.id}`);
   });
 
   // Chat-specific events only (notifications now use SSE)
   socket.on("joinChat", ({ chatId }) => {
     socket.join(`chat_${chatId}`);
-    console.log(`Socket ${socket.id} joined chat room ${chatId}`);
+    logger.debug(`Socket ${socket.id} joined chat room ${chatId}`);
   });
 
   socket.on("leaveChat", ({ chatId }) => {
     socket.leave(`chat_${chatId}`);
-    console.log(`Socket ${socket.id} left chat room ${chatId}`);
+    logger.debug(`Socket ${socket.id} left chat room ${chatId}`);
   });
 
   socket.on("typing", ({ chatId, userId }) => {
@@ -109,7 +110,7 @@ io.on("connection", (socket) => {
 
 
 server.listen(port, async () => {
-  console.log(`Server running on http://localhost:${port}`);
+  logger.info(`Server running on http://localhost:${port}`);
 
   // Initialize scheduled cleanup job for permanent user deletion
   await initializeCleanupSchedule();

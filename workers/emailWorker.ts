@@ -3,6 +3,7 @@ import nodemailer from "nodemailer";
 import { redisConnection } from "../config/redis";
 import { EmailJobData } from "../services/emailQueue";
 import dotenv from "dotenv";
+import logger from "../services/logger";
 
 dotenv.config();
 
@@ -24,7 +25,7 @@ const emailWorker = new Worker<EmailJobData>(
     async (job: Job<EmailJobData>) => {
         const { to, template, subject } = job.data;
 
-        console.log(`[EmailWorker] Processing job ${job.id} - sending to: ${to}`);
+        logger.info(`[EmailWorker] Processing job ${job.id} - sending to: ${to}`);
 
         const mailOptions = {
             from: {
@@ -38,9 +39,9 @@ const emailWorker = new Worker<EmailJobData>(
 
         try {
             await transporter.sendMail(mailOptions);
-            console.log(`[EmailWorker] Job ${job.id} completed - email sent to: ${to}`);
+            logger.info(`[EmailWorker] Job ${job.id} completed - email sent to: ${to}`);
         } catch (error) {
-            console.error(`[EmailWorker] Job ${job.id} failed:`, error);
+            logger.error(`[EmailWorker] Job ${job.id} failed:`, { error });
             throw error; // Rethrow to trigger retry
         }
     },
@@ -52,17 +53,17 @@ const emailWorker = new Worker<EmailJobData>(
 
 // Worker event handlers
 emailWorker.on("completed", (job) => {
-    console.log(`[EmailWorker] Job ${job.id} has completed successfully`);
+    logger.info(`[EmailWorker] Job ${job.id} has completed successfully`);
 });
 
 emailWorker.on("failed", (job, err) => {
-    console.error(`[EmailWorker] Job ${job?.id} failed with error:`, err.message);
+    logger.error(`[EmailWorker] Job ${job?.id} failed with error:`, { message: err.message });
 });
 
 emailWorker.on("error", (err) => {
-    console.error("[EmailWorker] Worker error:", err);
+    logger.error("[EmailWorker] Worker error:", { err });
 });
 
-console.log("[EmailWorker] Email worker started and listening for jobs...");
+logger.info("[EmailWorker] Email worker started and listening for jobs...");
 
 export default emailWorker;

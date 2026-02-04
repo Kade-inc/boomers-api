@@ -11,6 +11,7 @@ import UserProfile from "../../models/userProfileModel";
 import { Types, Document } from "mongoose";
 import Notification from "../../models/notificationModel";
 import sseNotificationService from "../../services/sseService";
+import logger from "../../services/logger";
 
 interface PopulatedUser extends Document {
   _id: Types.ObjectId;
@@ -101,10 +102,7 @@ export const addTeamMember = asyncHandler(
 
       // Send notification via SSE
       sseNotificationService.sendNotification(userExists._id.toString(), notification);
-      console.log(
-        "Notification sent via SSE to user " + userExists._id.toString(),
-        notification
-      );
+      logger.debug("Notification sent via SSE to user " + userExists._id.toString(), { notification });
 
       res.status(201).json({ message: "successful", data: teamMember });
     } catch (error: any) {
@@ -210,11 +208,7 @@ export const joinTeam = asyncHandler(
 
       // Send notification via SSE
       sseNotificationService.sendNotification(teamExists.owner_id.toString(), notification);
-      console.log(
-        "Notification sent via SSE to team owner " +
-        teamExists.owner_id.toString(),
-        notification
-      );
+      logger.debug("Notification sent via SSE to team owner " + teamExists.owner_id.toString(), { notification });
 
       const emailTemplate = createEmailTemplate({
         greeting: `Hi ${owner?.username},`,
@@ -320,11 +314,7 @@ export const updateJoinRequest = asyncHandler(
 
       // Send notification via SSE
       sseNotificationService.sendNotification(memberRequest.user_id.toString(), notification);
-      console.log(
-        "Notification sent via SSE to user " +
-        memberRequest.user_id.toString(),
-        notification
-      );
+      logger.debug("Notification sent via SSE to user " + memberRequest.user_id.toString(), { notification });
 
       const emailTemplate = createEmailTemplate({
         greeting: `Hi,`,
@@ -377,10 +367,7 @@ export const deleteTeamMember = asyncHandler(
 
       // Send notification via SSE
       sseNotificationService.sendNotification(teamMember.user_id.toString(), notification);
-      console.log(
-        "Notification sent via SSE to user " + teamMember.user_id.toString(),
-        notification
-      );
+      logger.debug("Notification sent via SSE to user " + teamMember.user_id.toString(), { notification });
 
       res.status(204).json({
         message: "Team member removed successfully",

@@ -1,5 +1,6 @@
 import User from "../models/userModel";
 import UserProfile from "../models/userProfileModel";
+import logger from "../services/logger";
 
 const passport = require("passport");
 
@@ -77,7 +78,7 @@ passport.use(
       ],
     }, // facebook will send back the token and profile
     function (token: any, refreshToken: string, profile: any, done: any) {
-      console.log(profile);
+      logger.debug("Facebook profile received", { profile });
       return done(null, profile);
     }
   )

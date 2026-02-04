@@ -11,6 +11,7 @@ import ChallengeStepComment from "../models/challengeStepCommentModel";
 import Notification from "../models/notificationModel";
 import { Types } from "mongoose";
 import sseNotificationService from "../services/sseService";
+import logger from "../services/logger";
 
 interface PopulatedStepComment {
   user: {
@@ -78,7 +79,7 @@ export const addChallengeStep = asyncHandler(
         }
       }
     } catch (error: any) {
-      console.log("ERRROR: ", error);
+      logger.error("Error adding challenge step", { error });
       res.status(500).json({ error: error.message });
     }
   }
@@ -96,7 +97,7 @@ export const getAllChallengeSteps = asyncHandler(
 
       res.status(200).json({ message: "successful", data: steps });
     } catch (error: any) {
-      console.log("ERRROR: ", error);
+      logger.error("Error getting all challenge steps", { error });
       res.status(500).json({ error: error.message });
     }
   }
@@ -173,7 +174,7 @@ export const updateChallengeStep = asyncHandler(
         }
       }
     } catch (error: any) {
-      console.log("ERRROR: ", error);
+      logger.error("Error updating challenge step", { error });
       res.status(500).json({ error: error.message });
     }
   }
@@ -191,7 +192,7 @@ export const getChallengeStep = asyncHandler(
 
       res.status(200).json({ message: "successful", data: step });
     } catch (error: any) {
-      console.log("ERRROR: ", error);
+      logger.error("Error getting challenge step", { error });
       res.status(500).json({ error: error.message });
     }
   }
@@ -255,7 +256,7 @@ export const deleteChallengeStep = asyncHandler(
         res.status(204).json({ message: "successful" });
       }
     } catch (error: any) {
-      console.log("ERRROR: ", error);
+      logger.error("Error deleting challenge step", { error });
       res.status(500).json({ error: error.message });
     }
   }
@@ -367,7 +368,7 @@ export const postSolutionStepComment = asyncHandler(
         for (const userId of usersToNotify) {
           // Validate that userId is a valid 24-character hex string
           if (!/^[0-9a-fA-F]{24}$/.test(userId)) {
-            console.error("Invalid userId format:", userId);
+            logger.error("Invalid userId format:", { userId });
             continue;
           }
 
@@ -387,16 +388,16 @@ export const postSolutionStepComment = asyncHandler(
 
             // Send notification via SSE
             sseNotificationService.sendNotification(userId, notification);
-            console.log("Notification sent via SSE to user " + userId, notification);
+            logger.debug("Notification sent via SSE to user " + userId, { notification });
           } catch (error) {
-            console.error("Error creating notification for userId:", userId, error);
+            logger.error("Error creating notification for userId:", { userId, error });
           }
         }
 
         res.status(201).json({ message: "successful", data: solutionStepComment });
       }
     } catch (error: any) {
-      console.log(error);
+      logger.error("Error posting solution step comment", { error });
       res.status(500).json({ error: error.message });
     }
   }
@@ -467,7 +468,7 @@ export const updateSolutionStepComment = asyncHandler(
         res.status(200).json({ message: "successful", data: updatedComment });
       }
     } catch (error: any) {
-      console.log(error);
+      logger.error("Error updating solution step comment", { error });
       res.status(500).json({ error: error.message });
     }
   }
@@ -479,7 +480,7 @@ export const updateSolutionStepComment = asyncHandler(
 export const getSolutionStepComments = asyncHandler(
   async (req: CustomRequest, res: Response) => {
     try {
-      console.log("CALLING")
+      logger.debug("Getting solution step comments");
       const challenge_id = req.params.id;
       const challengeExists: any = await TeamChallenge.find({
         _id: challenge_id,
@@ -509,7 +510,7 @@ export const getSolutionStepComments = asyncHandler(
 
       res.status(200).json({ message: "successful", data: solutionStepComments });
     } catch (error: any) {
-      console.log(error);
+      logger.error("Error getting solution step comments", { error });
       res.status(500).json({ error: error.message });
     }
   }
@@ -556,7 +557,7 @@ export const getSolutionStepComment = asyncHandler(
 
       res.status(200).json({ message: "successful", data: solutionStepComment });
     } catch (error: any) {
-      console.log(error);
+      logger.error("Error getting solution step comment", { error });
       res.status(500).json({ error: error.message });
     }
   }
@@ -597,7 +598,7 @@ export const deleteSolutionStepComment = asyncHandler(
 
       res.status(204).json({ message: "successful" });
     } catch (error: any) {
-      console.log(error);
+      logger.error("Error deleting solution step comment", { error });
       res.status(500).json({ error: error.message });
     }
   }
