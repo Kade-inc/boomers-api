@@ -13,6 +13,7 @@ import Role from "../models/roleModel";
 import { CustomRequest } from "../middleware/validateTokenHandler";
 import ResetPasswordToken from "../models/resetPasswordTokenModel";
 import Joi from "joi";
+import logger from "../services/logger";
 const myCustomJoi = Joi.extend(require("joi-phone-number"));
 
 dotenv.config();
@@ -139,7 +140,6 @@ const registerUser = asyncHandler(async (req: Request, res: Response) => {
       let verificationLink;
       if (source === "mobile") {
         verificationLink = `exp://localhost:8081/--/verificationSuccess?email=${email}&verificationCode=${unhashedCode}`;
-        console.log("VERIFICATION LINK: ", verificationLink);
       } else {
         if (teamId) {
           verificationLink = `${process.env.FRONTEND_URL}/signup-verification?email=${email}&verificationCode=${unhashedCode}&teamId=${teamId}`;
@@ -195,7 +195,6 @@ export const verifyUser = asyncHandler(async (req: Request, res: Response) => {
       }
     }
 
-    console.log("VERIFICATION CODE: ", verificationCode);
     const isCorrect = await bcrypt.compare(
       verificationCode.toString(),
       hashedVerificationCode[0].code
@@ -671,7 +670,7 @@ export const verifyResetToken = async (req: Request, res: Response) => {
       },
     });
   } catch (error: any) {
-    console.error("Verify reset token error:", error);
+    logger.error("Verify reset token error:", { error });
     return res.status(500).json({ message: "Error verifying reset token" });
   }
 };
@@ -698,7 +697,7 @@ export const addUserPushToken = asyncHandler(
       });
 
     } catch (error: any) {
-      console.error(error);
+      logger.error("Error adding push token", { error });
       res.status(500).json({ message: "Server error." });
     }
 
@@ -768,7 +767,7 @@ export const deleteUser = asyncHandler(
         },
       });
     } catch (error: any) {
-      console.error("Error initiating user deletion:", error);
+      logger.error("Error initiating user deletion:", { error });
       res.status(500).json({ message: "Error initiating user deletion", error: error.message });
     }
   }

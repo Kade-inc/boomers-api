@@ -1,6 +1,7 @@
 // config/redisClient.ts
 import { createClient } from "redis";
 import dotenv from "dotenv";
+import logger from "../services/logger";
 
 dotenv.config();
 
@@ -10,11 +11,11 @@ const redisClient = createClient({
   url: redisUrl,
 });
 
-redisClient.on("error", (err) => console.error("Redis Client Error", err));
+redisClient.on("error", (err) => logger.error("Redis Client Error", { err }));
 
 (async () => {
   await redisClient.connect();
-  console.log("Connected to Redis");
+  logger.info("Connected to Redis");
 })();
 
 export default redisClient;

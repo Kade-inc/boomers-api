@@ -10,6 +10,7 @@ import {
 import crypto from "crypto";
 import sharp from "sharp";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import logger from "../services/logger";
 
 const randomImageName = (bytes = 32) =>
   crypto.randomBytes(bytes).toString("hex");
@@ -174,7 +175,7 @@ export const updateUserProfile = asyncHandler(async (req: any, res) => {
           await s3.send(new DeleteObjectCommand(deleteParams));
         } catch (deleteError) {
           // Log but continue - uploading new image is more important
-          console.warn("Failed to delete old profile picture:", deleteError);
+          logger.warn("Failed to delete old profile picture:", { deleteError });
         }
       }
 
@@ -225,7 +226,7 @@ export const updateUserProfile = asyncHandler(async (req: any, res) => {
               try {
                 return JSON.parse(updateProfileBody.interests);
               } catch (error) {
-                console.error("Error parsing interests JSON:", error);
+                logger.error("Error parsing interests JSON:", { error });
                 return profile.interests;
               }
             })()
@@ -268,7 +269,7 @@ export const updateUserProfile = asyncHandler(async (req: any, res) => {
             try {
               return JSON.parse(updateProfileBody.interests);
             } catch (error) {
-              console.error("Error parsing interests JSON:", error);
+              logger.error("Error parsing interests JSON:", { error });
               return profile.interests;
             }
           })()

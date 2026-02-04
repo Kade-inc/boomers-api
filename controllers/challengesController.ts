@@ -4,6 +4,7 @@ import { CustomRequest } from "../middleware/validateTokenHandler";
 import TeamChallenge from "../models/teamChallengeModel";
 import TeamMember from "../models/teamMemberModel";
 import Team from "../models/teamModel";
+import logger from "../services/logger";
 
 //@desc Get Challenges
 //@route GET /api/challenges
@@ -20,7 +21,7 @@ export const getAllChallenges = asyncHandler(
 
         // Fetch all teams for the user's team IDs
         const teams = await Team.find({ _id: { $in: teamIds } });
-        
+
         // Create a map of team IDs to team names
         const teamNamesMap = teams.reduce((acc: Record<string, string>, team) => {
           acc[team._id.toString()] = team.name;
@@ -38,9 +39,9 @@ export const getAllChallenges = asyncHandler(
             const hasDueDate = !!challenge.due_date;
             const hasDescription = !!challenge.description;
             const hasResources = !!challenge.resources;
-          
+
             let currentStep;
-          
+
             if (hasTeamId && (!hasChallengeName || !hasDifficulty || !hasDueDate)) {
               currentStep = 2;
             } else if (hasTeamId && hasChallengeName && hasDifficulty && hasDueDate && !hasDescription) {
@@ -111,7 +112,7 @@ export const deleteMultipleChallengesByUser = asyncHandler(
       const { challengeIds } = req.body;
       if (!challengeIds || !Array.isArray(challengeIds) || challengeIds.length === 0) {
         res.status(400).json({ message: "No challenge IDs provided or invalid format" });
-        return 
+        return
       }
 
       // Fetch the challenges that match the provided IDs
@@ -120,10 +121,10 @@ export const deleteMultipleChallengesByUser = asyncHandler(
       });
 
       // Filter challenges to include only those owned by the user
-      const ownedChallenges:any = [];
-    
+      const ownedChallenges: any = [];
+
       for (const challenge of challenges) {
-        const team = await Team.findById({_id: challenge.team_id.toString()});
+        const team = await Team.findById({ _id: challenge.team_id.toString() });
         if (team && team.owner_id.toString() === req.user.id) {
           ownedChallenges.push(challenge._id);
         }
@@ -131,7 +132,7 @@ export const deleteMultipleChallengesByUser = asyncHandler(
 
       if (ownedChallenges.length === 0) {
         res.status(403).json({ message: "User does not own any of the specified challenges" });
-        return 
+        return
       }
 
       // Delete the challenges that the user owns
@@ -144,7 +145,7 @@ export const deleteMultipleChallengesByUser = asyncHandler(
         deletedCount: result.deletedCount,
       });
     } catch (error: any) {
-      console.log(error);
+      logger.error("Error deleting multiple challenges", { error });
       res.status(500).json({ message: "Server error", error: error.message });
     }
   }

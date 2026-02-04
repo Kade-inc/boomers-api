@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import dotenv from "dotenv";
 import "../models"; // Import all models to ensure they are registered
+import logger from "../services/logger";
 
 dotenv.config();
 
@@ -38,13 +39,12 @@ const connectDb = async () => {
       socketTimeoutMS: 0,
       connectTimeoutMS: 0
     });
-    console.log(
+    logger.info(
       "Database connected: ",
-      connect.connection.host,
-      connect.connection.name
+      { host: connect.connection.host, name: connect.connection.name }
     );
   } catch (err) {
-    console.log(err);
+    logger.error("Database connection failed", { err });
     process.exit(1);
   }
 };

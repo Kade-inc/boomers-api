@@ -3,6 +3,7 @@ import { CustomRequest } from "../middleware/validateTokenHandler";
 import { Response } from "express";
 import Message from "../models/messageModel";
 import Chat from "../models/chatModel";
+import logger from "../services/logger";
 
 // createMessage
 // getMessages
@@ -39,7 +40,7 @@ export const createMessage = asyncHandler(
 
       res.status(201).json(response);
     } catch (error) {
-      console.log(error);
+      logger.error("Error creating message", { error });
       res.status(500).json(error);
     }
   }
@@ -54,7 +55,7 @@ export const getMessages = asyncHandler(
       });
       res.status(200).json(messages);
     } catch (error) {
-      console.log(error);
+      logger.error("Error getting messages", { error });
       res.status(500).json(error);
     }
   }
@@ -88,7 +89,7 @@ export const updateMessage = asyncHandler(
       const updatedMessage = await message.save();
       res.status(200).json(updatedMessage);
     } catch (error) {
-      console.log(error);
+      logger.error("Error updating message", { error });
       res.status(500).json(error);
     }
   }
@@ -119,7 +120,7 @@ export const deleteMessage = asyncHandler(
       await message.deleteOne()
       res.status(200).json({ message: "Message deleted successfully." });
     } catch (error) {
-      console.log(error);
+      logger.error("Error deleting message", { error });
       res.status(500).json(error);
     }
   }
@@ -183,7 +184,7 @@ export const createMessageWithChat = asyncHandler(
         isNewChat,
       });
     } catch (error) {
-      console.log(error);
+      logger.error("Error creating message with chat", { error });
       res.status(500).json(error);
     }
   }

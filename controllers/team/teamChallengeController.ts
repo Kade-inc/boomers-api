@@ -8,6 +8,7 @@ import Notification from "../../models/notificationModel";
 import ChallengeComment from "../../models/challengeCommentModel";
 import crypto from "crypto";
 import sseNotificationService from "../../services/sseService";
+import logger from "../../services/logger";
 
 interface MulterRequest extends Request {
   file: Express.Multer.File;
@@ -112,7 +113,7 @@ export const getAllTeamChallenges = asyncHandler(
 
       }
     } catch (error: any) {
-      console.log(error);
+      logger.error("Error getting all team challenges", { error });
     }
   }
 );
@@ -139,7 +140,7 @@ export const getIndividualTeamChallenge = asyncHandler(
         }
       }
     } catch (error: any) {
-      console.log(error);
+      logger.error("Error getting individual team challenge", { error });
     }
   }
 );
@@ -179,7 +180,7 @@ export const updateIndividualTeamChallenge = asyncHandler(
         }
       }
     } catch (error: any) {
-      console.log(error);
+      logger.error("Error updating individual team challenge", { error });
     }
   }
 );
@@ -216,7 +217,7 @@ export const deleteIndividualTeamChallenge = asyncHandler(
         }
       }
     } catch (error: any) {
-      console.log(error);
+      logger.error("Error deleting individual team challenge", { error });
     }
   }
 );
@@ -237,7 +238,6 @@ export const postChallengeComment = asyncHandler(
         return;
       }
 
-      console.log
 
       const teamMembers = await TeamMember.find({
         team_id: challengeExists[0].team_id,
@@ -290,7 +290,7 @@ export const postChallengeComment = asyncHandler(
 
         const username = (notificationOwner?.user_id as any).profile.firstName && (notificationOwner?.user_id as any).profile.lastName ? `${(notificationOwner?.user_id as any).profile.firstName} ${(notificationOwner?.user_id as any).profile.lastName}` : (notificationOwner?.user_id as any).profile.username;
 
-        console.log("USERNAME: ", username)
+        logger.debug("USERNAME: ", { username });
 
 
         for (const member of membersToNotify) {
@@ -304,13 +304,13 @@ export const postChallengeComment = asyncHandler(
           // Send notification via SSE
           const userId = member.user_id._id ? member.user_id._id.toString() : member.user_id.toString();
           sseNotificationService.sendNotification(userId, notification);
-          console.log("Notification sent via SSE to user " + userId, notification);
+          logger.debug("Notification sent via SSE to user " + userId, { notification });
         }
 
         res.status(201).json({ message: "successful", data: challengeComment });
       }
     } catch (error: any) {
-      console.log(error);
+      logger.error("Error posting challenge comment", { error });
       res.status(400).json({ error: error.message });
     }
   }
@@ -375,7 +375,7 @@ export const updateChallengeComment = asyncHandler(
         res.status(200).json({ message: "successful", data: updatedComment });
       }
     } catch (error: any) {
-      console.log(error);
+      logger.error("Error updating challenge comment", { error });
       res.status(400).json({ error: error.message });
     }
   }
@@ -432,7 +432,7 @@ export const getChallengeComments = asyncHandler(
 
       res.status(200).json({ message: "successful", data });
     } catch (error: any) {
-      console.error(error);
+      logger.error("Error getting challenge comments", { error });
       res.status(400).json({ error: error.message });
     }
   }
@@ -462,7 +462,7 @@ export const getChallengeComment = asyncHandler(
 
       res.status(200).json({ message: "successful", data: challengeComment });
     } catch (error: any) {
-      console.log(error);
+      logger.error("Error getting challenge comment", { error });
       res.status(400).json({ error: error.message });
     }
   }
@@ -502,7 +502,7 @@ export const deleteChallengeComment = asyncHandler(
 
       res.status(204).json({ message: "successful" });
     } catch (error: any) {
-      console.log(error);
+      logger.error("Error deleting challenge comment", { error });
       res.status(400).json({ error: error.message });
     }
   }
@@ -617,7 +617,7 @@ export const updateIndividualTeamChallengeV2 = asyncHandler(
 
           // Send notification via SSE
           sseNotificationService.sendNotification(member.user_id.toString(), notification);
-          console.log("Notification sent via SSE to user " + member.user_id.toString(), notification);
+          logger.debug("Notification sent via SSE to user " + member.user_id.toString(), { notification });
         }
       }
 
@@ -627,7 +627,7 @@ export const updateIndividualTeamChallengeV2 = asyncHandler(
 
 
     } catch (error: any) {
-      console.log(error);
+      logger.error("Error updating individual team challenge v2", { error });
       res.status(500)
       throw new (error)
     }
@@ -671,7 +671,7 @@ export const deleteMultipleSpecificTeamChallenges = asyncHandler(
         deletedCount: result.deletedCount,
       });
     } catch (error: any) {
-      console.log(error);
+      logger.error("Error deleting multiple specific team challenges", { error });
       res.status(500).json({ message: "Server error", error: error.message });
     }
   }

@@ -1,4 +1,5 @@
 import { Response } from 'express';
+import logger from './logger';
 
 interface SSEClient {
     id: string;
@@ -38,7 +39,7 @@ class SSENotificationService {
         userClients.push(client);
         this.clients.set(userId, userClients);
 
-        console.log(`SSE client connected: ${clientId} for user ${userId}`);
+        logger.debug(`SSE client connected: ${clientId} for user ${userId}`);
 
         return clientId;
     }
@@ -55,7 +56,7 @@ class SSENotificationService {
             } else {
                 this.clients.set(userId, filteredClients);
             }
-            console.log(`SSE client disconnected: ${clientId} for user ${userId}`);
+            logger.debug(`SSE client disconnected: ${clientId} for user ${userId}`);
         }
     }
 
@@ -70,14 +71,14 @@ class SSENotificationService {
                 try {
                     client.response.write(`event: notification\ndata: ${data}\n\n`);
                 } catch (error) {
-                    console.error(`Error sending SSE to client ${client.id}:`, error);
+                    logger.error(`Error sending SSE to client ${client.id}:`, { error });
                     // Remove the failed client
                     this.removeClient(userId, client.id);
                 }
             });
-            console.log(`Notification sent via SSE to user ${userId}`);
+            logger.debug(`Notification sent via SSE to user ${userId}`);
         } else {
-            console.log(`No SSE clients connected for user ${userId}`);
+            logger.debug(`No SSE clients connected for user ${userId}`);
         }
     }
 
@@ -90,7 +91,7 @@ class SSENotificationService {
                 try {
                     client.response.write(`: heartbeat\n\n`);
                 } catch (error) {
-                    console.error(`Error sending heartbeat to client ${client.id}:`, error);
+                    logger.error(`Error sending heartbeat to client ${client.id}:`, { error });
                     this.removeClient(userId, client.id);
                 }
             });

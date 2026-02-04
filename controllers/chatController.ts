@@ -4,6 +4,7 @@ import { Response } from "express";
 import Chat from "../models/chatModel";
 import Message from "../models/messageModel";
 import { Team, TeamMember } from "../models";
+import logger from "../services/logger";
 
 // createchat
 // findUserChats
@@ -105,7 +106,7 @@ export const findUserChats = asyncHandler(
 
       res.status(200).json({ message: "Chats retrieved successfully.", data: chatsWithLastMessage });
     } catch (error) {
-      console.log(error);
+      logger.error("Error finding user chats", { error });
       res.status(500).json(error);
     }
   }
@@ -294,7 +295,7 @@ export const createGroupChat = asyncHandler(
       const response = await newChat.save();
       res.status(201).json({ message: "Group chat created successfully.", data: response, isExisting: false });
     } catch (error: any) {
-      console.error("Error creating group chat:", error);
+      logger.error("Error creating group chat:", { error });
       res.status(500).json({ message: "Error creating group chat." });
     }
   }
