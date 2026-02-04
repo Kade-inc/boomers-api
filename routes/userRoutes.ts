@@ -2,6 +2,7 @@ import express from "express";
 import registerUser, {
   addUserPushToken,
   currentUser,
+  deleteUser,
   forgotPassword,
   getUser,
   getUsers,
@@ -331,6 +332,34 @@ userRouter.post("/logout", logout)
 
 userRouter.post("/push-token", validateToken, addUserPushToken)
 
-
+/**
+ * @openapi
+ * '/api/users/{id}':
+ *  delete:
+ *     tags:
+ *     - User Controller
+ *     summary: Delete a user (soft delete with cascade)
+ *     description: Soft deletes a user and all related data. User can only delete themselves unless they are an admin.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The user ID to delete
+ *     responses:
+ *      200:
+ *        description: User deleted successfully
+ *      400:
+ *        description: User is already deleted
+ *      403:
+ *        description: Not authorized to delete this user
+ *      404:
+ *        description: User not found
+ *      500:
+ *        description: Server Error
+ */
+userRouter.delete("/:id", validateToken, deleteUser);
 
 export default userRouter;
+

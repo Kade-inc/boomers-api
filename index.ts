@@ -10,6 +10,11 @@ import dotenv from "dotenv";
 
 // Import email worker to start processing email jobs
 import "./workers/emailWorker";
+// Import user deletion worker to start processing deletion jobs
+import "./workers/userDeletionWorker";
+// Import cleanup worker for scheduled permanent deletion
+import "./workers/cleanupWorker";
+import { initializeCleanupSchedule } from "./services/cleanupQueue";
 
 import userRouter from "./routes/userRoutes";
 import userProfileRouter from "./routes/userProfileRoutes";
@@ -103,9 +108,11 @@ io.on("connection", (socket) => {
 });
 
 
-server.listen(port, () => {
+server.listen(port, async () => {
   console.log(`Server running on http://localhost:${port}`);
 
+  // Initialize scheduled cleanup job for permanent user deletion
+  await initializeCleanupSchedule();
 });
 
 // server.listen(

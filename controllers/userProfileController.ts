@@ -164,6 +164,20 @@ export const updateUserProfile = asyncHandler(async (req: any, res) => {
       //   .resize({ height: 400, width: 400, fit: "contain" })
       //   .toBuffer();
 
+      // Delete old profile picture from S3 if it exists
+      if (profile.profile_picture) {
+        try {
+          const deleteParams = {
+            Bucket: bucketName,
+            Key: profile.profile_picture,
+          };
+          await s3.send(new DeleteObjectCommand(deleteParams));
+        } catch (deleteError) {
+          // Log but continue - uploading new image is more important
+          console.warn("Failed to delete old profile picture:", deleteError);
+        }
+      }
+
       const imageKey = randomImageName();
       const params = {
         Bucket: bucketName,
@@ -208,13 +222,13 @@ export const updateUserProfile = asyncHandler(async (req: any, res) => {
           bio: updateProfileBody.bio,
           interests: updateProfileBody.interests
             ? (() => {
-                try {
-                  return JSON.parse(updateProfileBody.interests);
-                } catch (error) {
-                  console.error("Error parsing interests JSON:", error);
-                  return profile.interests;
-                }
-              })()
+              try {
+                return JSON.parse(updateProfileBody.interests);
+              } catch (error) {
+                console.error("Error parsing interests JSON:", error);
+                return profile.interests;
+              }
+            })()
             : profile.interests,
           gender: updateProfileBody.gender,
           profile_picture: imageKey,
@@ -251,13 +265,13 @@ export const updateUserProfile = asyncHandler(async (req: any, res) => {
         bio: updateProfileBody.bio,
         interests: updateProfileBody.interests
           ? (() => {
-              try {
-                return JSON.parse(updateProfileBody.interests);
-              } catch (error) {
-                console.error("Error parsing interests JSON:", error);
-                return profile.interests;
-              }
-            })()
+            try {
+              return JSON.parse(updateProfileBody.interests);
+            } catch (error) {
+              console.error("Error parsing interests JSON:", error);
+              return profile.interests;
+            }
+          })()
           : profile.interests,
         gender: updateProfileBody.gender,
         job: updateProfileBody.job,
