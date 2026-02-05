@@ -16,6 +16,7 @@ const messageSchema = new Schema<IMessage>(
     },
     text: {
       type: String,
+      maxLength: 2000,
     },
   },
   {

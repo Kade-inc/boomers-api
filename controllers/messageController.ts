@@ -12,6 +12,11 @@ export const createMessage = asyncHandler(
   async (req: CustomRequest, res: Response) => {
     const senderId = req.user.id
     const { chatId, text } = req.body;
+
+    if (text.length > 2000) {
+      res.status(400).json({ message: "Message cannot exceed 2000 characters" });
+      return;
+    }
     try {
 
       // Retrieve the chat document by its ID.
@@ -135,6 +140,11 @@ export const createMessageWithChat = asyncHandler(
 
     if (!recipientId || !text) {
       res.status(400).json({ message: "Recipient ID and message text are required." });
+      return;
+    }
+
+    if (text.length > 2000) {
+      res.status(400).json({ message: "Message cannot exceed 2000 characters" });
       return;
     }
 
