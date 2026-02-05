@@ -5,6 +5,7 @@ import { User, UserLoginCode, Role, Blacklist } from "../models";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from "../helpers/jwtHelper";
+import logger from "../services/logger";
 
 dotenv.config();
 //@desc Sign in a user
@@ -14,7 +15,10 @@ const logInUser = asyncHandler(async (req: Request, res: Response) => {
   try {
     const { password, accountId } = req.body;
 
+    logger.info(`Login attempt for accountId: ${accountId}`);
+
     if (!password.trim()) {
+      logger.warn("Login failed: Missing password");
       res.status(400);
       throw new Error("Please put a password");
     }
@@ -28,11 +32,13 @@ const logInUser = asyncHandler(async (req: Request, res: Response) => {
     }).populate('role');
 
     if (!user.length) {
+      logger.warn(`Login failed: User not found for accountId: ${accountId}`);
       res.status(401);
       throw new Error("Invalid email/phone or password");
     }
 
     if (!user[0].isVerified) {
+      logger.warn(`Login failed: User not verified for accountId: ${accountId}`);
       res.status(401);
       throw new Error("Invalid email/phone or password");
     }
@@ -40,6 +46,7 @@ const logInUser = asyncHandler(async (req: Request, res: Response) => {
     const isPasswordValid = await bcrypt.compare(password, user[0].password);
 
     if (!isPasswordValid) {
+      logger.warn(`Login failed: Invalid password for accountId: ${accountId}`);
       res.status(401);
       throw new Error("Invalid email/phone or password");
     }
@@ -66,43 +73,45 @@ const logInUser = asyncHandler(async (req: Request, res: Response) => {
 
     // res.status(200).json({ message: "Log in successful", authCode });
     // Create a JWT token with an expiration time of 1 hour
-      // const token = jwt.sign(
-      //   {
-      //     user: {
-      //       phoneNumber: user[0].phoneNumber,
-      //       email: user[0].email,
-      //       id: user[0]._id,
-      //     },
-      //   },
-      //   process.env.ACCESS_TOKEN_SECRET!,
-      //   {
-      //     expiresIn: "1h",
-      //   }
-      // );
-      const accessToken = signAccessToken(user[0])
-      const refreshToken = signRefreshToken(user[0])
+    // const token = jwt.sign(
+    //   {
+    //     user: {
+    //       phoneNumber: user[0].phoneNumber,
+    //       email: user[0].email,
+    //       id: user[0]._id,
+    //     },
+    //   },
+    //   process.env.ACCESS_TOKEN_SECRET!,
+    //   {
+    //     expiresIn: "1h",
+    //   }
+    // );
+    const accessToken = signAccessToken(user[0])
+    const refreshToken = signRefreshToken(user[0])
 
-      // let options:any = {
-      //   maxAge: 365 * 24 * 60 * 60 * 1000, // would expire in 20minutes
-      //   httpOnly: true, // The cookie is only accessible by the web server
-      //   secure: true,
-      //   sameSite: "None",
-      // };
-   
-      // res.cookie("token", accessToken, options); 
-      res.status(200).json({ 
-        message: "Log in successful", 
-        accessToken, 
-        refreshToken,
-        user: {
-          id: user[0]._id,
-          email: user[0].email,
-          role: user[0].role ? (user[0].role as any).name : 'user'
-        }
-      });
+    // let options:any = {
+    //   maxAge: 365 * 24 * 60 * 60 * 1000, // would expire in 20minutes
+    //   httpOnly: true, // The cookie is only accessible by the web server
+    //   secure: true,
+    //   sameSite: "None",
+    // };
 
-    
+    // res.cookie("token", accessToken, options); 
+    logger.info(`Login successful for user: ${user[0]._id}`);
+    res.status(200).json({
+      message: "Log in successful",
+      accessToken,
+      refreshToken,
+      user: {
+        id: user[0]._id,
+        email: user[0].email,
+        role: user[0].role ? (user[0].role as any).name : 'user'
+      }
+    });
+
+
   } catch (error: any) {
+    logger.error(`Login error: ${error.message}`);
     res.status(400)
     throw new Error(error);
   }
@@ -116,8 +125,10 @@ export const verifyUserCode = asyncHandler(
   async (req: Request, res: Response) => {
     try {
       const { authCode, accountId } = req.body;
+      logger.info(`Verifying user code for accountId: ${accountId}`);
 
       if (!accountId && !authCode) {
+        logger.warn("Verification failed: Missing accountId or authCode");
         res.status(400).json({
           message: "Please provide both accountId and verification code",
         });
@@ -132,6 +143,7 @@ export const verifyUserCode = asyncHandler(
         ],
       }).populate('role');
       if (!user.length) {
+        logger.warn("Verification failed: User not found");
         res.status(404);
         throw new Error("User not found");
       }
@@ -141,6 +153,7 @@ export const verifyUserCode = asyncHandler(
       });
 
       if (!logInAuthCode) {
+        logger.warn("Verification failed: No auth code found");
         res.status(400).json({ message: "No authentication code found" });
         return;
       }
@@ -151,6 +164,7 @@ export const verifyUserCode = asyncHandler(
       const diffTime = Math.abs(createdDate - currentDate);
       const fiveminutes = 1000 * 60 * 5;
       if (diffTime > fiveminutes) {
+        logger.warn("Verification failed: Auth code expired");
         await UserLoginCode.findByIdAndDelete(logInAuthCode._id);
         res.status(400).json({ error: "Authentication code expired" });
         return;
@@ -163,6 +177,7 @@ export const verifyUserCode = asyncHandler(
       );
 
       if (!isCodeValid) {
+        logger.warn("Verification failed: Incorrect code");
         res.status(400).json({ message: "Incorrect code" });
         return;
       }
@@ -185,8 +200,10 @@ export const verifyUserCode = asyncHandler(
         }
       );
 
+      logger.info(`Code verified successfully for user: ${user[0]._id}`);
       res.status(200).json({ message: "Code verified successfully", token });
     } catch (error: any) {
+      logger.error(`Verification error: ${error.message}`);
       throw new Error(error);
     }
   }
@@ -194,11 +211,13 @@ export const verifyUserCode = asyncHandler(
 
 
 export const refreshToken = asyncHandler(
-  async(req: Request, res: Response) => {
+  async (req: Request, res: Response) => {
     try {
       const { refreshToken } = req.body
+      logger.info("Refresh token attempt");
 
       if (!refreshToken) {
+        logger.warn("Refresh token failed: Missing refresh token");
         res.status(400)
         throw new Error("Please put a refresh token")
       }
@@ -207,14 +226,17 @@ export const refreshToken = asyncHandler(
 
       const accessToken = await signAccessToken(user)
       const refToken = await signRefreshToken(user)
-      res.status(201).json({accessToken: accessToken, refreshToken: refToken})
+
+      logger.info("Refresh token successful");
+      res.status(201).json({ accessToken: accessToken, refreshToken: refToken })
     }
-    catch(error:any) {
+    catch (error: any) {
+      logger.error(`Refresh token error: ${error.message}`);
       res.status(400)
       throw new Error(error)
     }
   }
- 
+
 )
 
 // Function to generate a random authentication code
@@ -230,8 +252,9 @@ const generateAuthCode = () => {
  * @desc Logout user
  * @access Public
  */
-export const logout = asyncHandler( async(req: Request, res: Response) => {
+export const logout = asyncHandler(async (req: Request, res: Response) => {
   try {
+    logger.info("Logout attempt");
 
     // TODO: 
     // Add logic for getting token from the cookie
@@ -241,6 +264,7 @@ export const logout = asyncHandler( async(req: Request, res: Response) => {
     const checkIfBlacklisted = await Blacklist.findOne({ token: token }); // Check if that token is blacklisted
     // if true, send a no content response.
     if (checkIfBlacklisted) {
+      logger.info("Logout: Token already blacklisted");
       res.sendStatus(204);
       return
     }
@@ -253,8 +277,11 @@ export const logout = asyncHandler( async(req: Request, res: Response) => {
     await newBlacklist.save();
     // Also clear request cookie on client
     // res.setHeader('Clear-Site-Data', '"cookies"');
+
+    logger.info("Logout successful");
     res.status(200).json({ message: 'You are logged out!' });
   } catch (err) {
+    logger.error(`Logout error: ${err}`);
     res.status(500).json({
       status: 'error',
       message: 'Internal Server Error',

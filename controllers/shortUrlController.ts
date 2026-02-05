@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import asyncHandler from "express-async-handler";
 import ShortUrl, { generateShortCode } from "../models/shortUrlModel";
+import logger from "../services/logger";
 
 /**
  * @desc    Create a short URL for a resource
@@ -76,6 +77,7 @@ export const createShortUrl = asyncHandler(
 
         const baseUrl = process.env.API_BASE_URL || `http://localhost:${process.env.PORT || 5001}`;
 
+        logger.info(`Short URL created: ${shortUrl.code} for ${resourceType}:${resourceId}`);
         res.status(201).json({
             shortUrl: `${baseUrl}/s/${shortUrl.code}`,
             code: shortUrl.code,
@@ -111,6 +113,7 @@ export const resolveShortUrl = asyncHandler(
         }).exec();
 
         // Redirect to original URL
+        logger.info(`Redirecting short URL code: ${code} to ${shortUrl.originalUrl}`);
         res.redirect(301, shortUrl.originalUrl);
     }
 );
@@ -136,6 +139,7 @@ export const getShortUrlInfo = asyncHandler(
             throw new Error("Short URL not found");
         }
 
+        logger.info(`Fetched info for short URL code: ${code}`);
         res.status(200).json({
             code: shortUrl.code,
             originalUrl: shortUrl.originalUrl,

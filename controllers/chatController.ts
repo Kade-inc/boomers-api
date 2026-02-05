@@ -62,8 +62,10 @@ export const createChat = asyncHandler(
 
       const response = await newChat.save();
 
+      logger.info(`Chat created: ${response._id}`);
       res.status(201).json(response);
     } catch (error: any) {
+      logger.error("Error creating chat", { error });
       res.status(500)
       throw new (error)
     }
@@ -73,8 +75,10 @@ export const createChat = asyncHandler(
 export const findUserChats = asyncHandler(
   async (req: CustomRequest, res: Response) => {
     const userId = req.params.userId;
+    logger.info(`Finding chats for user: ${userId}`);
 
     if (req.user.id !== userId) {
+      logger.warn(`User ${req.user.id} unauthorized to view chats for ${userId}`);
       res.status(403).json({ message: "User unauthorized to view chats" });
       return
     }
@@ -104,6 +108,7 @@ export const findUserChats = asyncHandler(
         return new Date(bTime).getTime() - new Date(aTime).getTime();
       });
 
+      logger.info(`Found ${chatsWithLastMessage.length} chats for user ${userId}`);
       res.status(200).json({ message: "Chats retrieved successfully.", data: chatsWithLastMessage });
     } catch (error) {
       logger.error("Error finding user chats", { error });
@@ -141,6 +146,7 @@ export const findChat = asyncHandler(
 
       res.status(200).json(chat);
     } catch (error: any) {
+      logger.error("Error finding chat", { error });
       res.status(500)
       throw new (error)
     }
@@ -155,6 +161,7 @@ export const updateChat = asyncHandler(
     const ownerId = req.user.id;
     // Expect addMembers, removeMembers, and groupName in the request body
     const { addMembers, removeMembers, groupName } = req.body;
+    logger.info(`Updating chat: ${chatId}`);
 
     try {
       // Find the chat by its ID
@@ -165,6 +172,7 @@ export const updateChat = asyncHandler(
       }
 
       if (chat.members[0] !== ownerId) {
+        logger.warn(`User ${ownerId} unauthorized to update chat ${chatId}`);
         res.status(403).json({ message: "User unauthorized to update chat" });
         return
       }
@@ -190,8 +198,10 @@ export const updateChat = asyncHandler(
 
       // Save the updated chat
       const updatedChat = await chat.save();
+      logger.info(`Chat updated: ${chatId}`);
       res.status(200).json(updatedChat);
     } catch (error: any) {
+      logger.error("Error updating chat", { error });
       res.status(500)
       throw new (error)
     }
@@ -209,6 +219,7 @@ export const findChatByChatId = asyncHandler(
       }
       res.status(200).json({ message: "Chat details retrieved successfully.", data: chat });
     } catch (error: any) {
+      logger.error("Error finding chat by id", { error });
       res.status(500)
       throw new (error)
     }
@@ -219,6 +230,7 @@ export const deleteChat = asyncHandler(
   async (req: CustomRequest, res: Response) => {
     const { chatId } = req.params;
     const ownerId = req.user.id
+    logger.info(`Deleting chat: ${chatId}`);
 
 
     try {
@@ -230,13 +242,16 @@ export const deleteChat = asyncHandler(
       }
 
       if (chat.members[0] !== ownerId) {
+        logger.warn(`User ${ownerId} unauthorized to delete chat ${chatId}`);
         res.status(403).json({ message: "User unauthorized to delete chat" });
         return
       }
       // Delete the chat
       await chat.deleteOne()
+      logger.info(`Chat deleted: ${chatId}`);
       res.status(200).json({ message: "Chat deleted successfully." });
     } catch (error: any) {
+      logger.error("Error deleting chat", { error });
       res.status(500)
       throw new (error)
     }

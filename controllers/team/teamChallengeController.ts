@@ -515,6 +515,7 @@ export const deleteChallengeComment = asyncHandler(
 export const createTeamChallengeV2 = asyncHandler(
   async (req: CustomRequest, res: Response) => {
     try {
+      logger.info(`Creating team challenge V2 for team: ${req.params.teamId}`);
       const teamExists = await Team.findById(req.params.teamId);
 
       if (!teamExists) {
@@ -688,6 +689,7 @@ export const uploadImage = asyncHandler(async (req: Request, res: Response) => {
 
   try {
     const imageKey = randomImageName();
+    logger.info("Uploading image to S3");
     const params = {
       Bucket: bucketName,
       Key: imageKey,

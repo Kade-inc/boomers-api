@@ -32,9 +32,11 @@ export const addChallengeStep = asyncHandler(
   async (req: CustomRequest, res: Response) => {
     try {
       const solutionId = req.params.solutionId;
+      logger.info(`Adding challenge step to solution: ${solutionId}`);
       const solution = await ChallengeSolution.findById({ _id: solutionId });
 
       if (req.user.id !== solution?.user_id.toString()) {
+        logger.warn(`User ${req.user.id} unauthorized to add step to solution ${solutionId}`);
         res.status(403).json({ error: "Solution does not belong to you" });
       } else {
         const { description } = req.body;
@@ -75,6 +77,7 @@ export const addChallengeStep = asyncHandler(
             { new: true }
           );
 
+          logger.info(`Challenge step added: ${challengeStep._id}`);
           res.status(201).json({ message: "successful", data: challengeStep });
         }
       }
@@ -92,9 +95,11 @@ export const getAllChallengeSteps = asyncHandler(
   async (req: CustomRequest, res: Response) => {
     try {
       const solutionId = req.params.solutionId;
+      logger.info(`Getting all steps for solution: ${solutionId}`);
 
       const steps = await ChallengeStep.find({ solution_id: solutionId });
 
+      logger.info(`Fetched ${steps.length} steps`);
       res.status(200).json({ message: "successful", data: steps });
     } catch (error: any) {
       logger.error("Error getting all challenge steps", { error });
@@ -110,9 +115,11 @@ export const updateChallengeStep = asyncHandler(
   async (req: CustomRequest, res: Response) => {
     try {
       const solutionId = req.params.solutionId;
+      logger.info(`Updating challenge step: ${req.params.stepId}`);
       const solution = await ChallengeSolution.findById({ _id: solutionId });
 
       if (req.user.id !== solution?.user_id.toString()) {
+        logger.warn(`User ${req.user.id} unauthorized to update step for solution ${solutionId}`);
         res.status(403).json({ error: "Solution does not belong to you" });
       } else {
         const { description, completed } = req.body;
@@ -167,6 +174,7 @@ export const updateChallengeStep = asyncHandler(
               { new: true }
             );
 
+            logger.info(`Challenge step updated: ${req.params.stepId}`);
             res
               .status(200)
               .json({ message: "successful", data: updatedChallengeStep });
@@ -187,8 +195,13 @@ export const getChallengeStep = asyncHandler(
   async (req: CustomRequest, res: Response) => {
     try {
       const stepId = req.params.stepId;
+      logger.info(`Getting challenge step: ${stepId}`);
 
       const step = await ChallengeStep.findById({ _id: stepId });
+
+      if (!step) {
+        logger.warn(`Step not found: ${stepId}`);
+      }
 
       res.status(200).json({ message: "successful", data: step });
     } catch (error: any) {
@@ -205,6 +218,7 @@ export const deleteChallengeStep = asyncHandler(
   async (req: CustomRequest, res: Response) => {
     try {
       const solutionId = req.params.solutionId;
+      logger.info(`Deleting challenge step: ${req.params.stepId}`);
       const challenge = await TeamChallenge.findById({
         _id: req.params.id,
       });
@@ -214,10 +228,12 @@ export const deleteChallengeStep = asyncHandler(
       });
 
       if (!challengeSolution || !challenge) {
+        logger.warn(`Solution or challenge not found for deleting step`);
         res.status(404).json({ error: "Solution does not exist" });
         return;
       }
       if (req.user.id !== challengeSolution?.user_id.toString()) {
+        logger.warn(`User ${req.user.id} unauthorized to delete step from solution ${solutionId}`);
         res.status(403).json({ error: "Solution does not belong to you" });
       } else {
         const deletedStep = await ChallengeStep.findByIdAndDelete(
@@ -225,6 +241,7 @@ export const deleteChallengeStep = asyncHandler(
         );
 
         if (!deletedStep) {
+          logger.warn(`Step not found for deletion: ${req.params.stepId}`);
           res.status(400).json({ error: "Step does not exist" });
           return;
         }
@@ -253,6 +270,7 @@ export const deleteChallengeStep = asyncHandler(
           { new: true }
         );
 
+        logger.info(`Challenge step deleted: ${req.params.stepId}`);
         res.status(204).json({ message: "successful" });
       }
     } catch (error: any) {
@@ -394,6 +412,7 @@ export const postSolutionStepComment = asyncHandler(
           }
         }
 
+        logger.info(`Posted solution step comment: ${solutionStepComment._id}`);
         res.status(201).json({ message: "successful", data: solutionStepComment });
       }
     } catch (error: any) {
@@ -465,6 +484,7 @@ export const updateSolutionStepComment = asyncHandler(
           { new: true }
         );
 
+        logger.info(`Updated solution step comment: ${req.params.commentId}`);
         res.status(200).json({ message: "successful", data: updatedComment });
       }
     } catch (error: any) {
@@ -508,6 +528,7 @@ export const getSolutionStepComments = asyncHandler(
         }
       });
 
+      logger.info(`Fetched ${solutionStepComments.length} solution step comments`);
       res.status(200).json({ message: "successful", data: solutionStepComments });
     } catch (error: any) {
       logger.error("Error getting solution step comments", { error });
@@ -551,10 +572,12 @@ export const getSolutionStepComment = asyncHandler(
       });
 
       if (!solutionStepComment) {
+        logger.warn(`Solution step comment not found: ${req.params.commentId}`);
         res.status(404).json({ message: "Comment not found" });
         return;
       }
 
+      logger.info(`Fetched solution step comment: ${req.params.commentId}`);
       res.status(200).json({ message: "successful", data: solutionStepComment });
     } catch (error: any) {
       logger.error("Error getting solution step comment", { error });
@@ -590,12 +613,14 @@ export const deleteSolutionStepComment = asyncHandler(
       }
 
       if (solutionStepComment.user.toString() !== req.user.id) {
+        logger.warn(`User ${req.user.id} tried to delete comment ${req.params.commentId}`);
         res.status(403).json({ error: "This is not your comment" });
         return;
       }
 
       await ChallengeStepComment.findByIdAndDelete(req.params.commentId);
 
+      logger.info(`Deleted solution step comment: ${req.params.commentId}`);
       res.status(204).json({ message: "successful" });
     } catch (error: any) {
       logger.error("Error deleting solution step comment", { error });

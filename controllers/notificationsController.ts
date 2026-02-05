@@ -2,11 +2,13 @@ import asyncHandler from "express-async-handler";
 import Notification from "../models/notificationModel";
 import { CustomRequest } from "../middleware/validateTokenHandler";
 import sseNotificationService from "../services/sseService";
+import logger from "../services/logger";
 
 // PATCH /api/notifications/:id
 export const updateNotificationStatus = asyncHandler(async (req: CustomRequest, res) => {
     const { id } = req.params;
     const { isRead } = req.body; // expects a boolean value
+    logger.info(`Updating notification status: ${id} to isRead=${isRead}`);
 
     if (typeof isRead !== "boolean") {
         res.status(400);
@@ -29,8 +31,10 @@ export const updateNotificationStatus = asyncHandler(async (req: CustomRequest, 
         notification.isRead = isRead;
         await notification.save();
 
+        logger.info(`Notification updated: ${id}`);
         res.status(200).json({ message: "Notification status updated", data: notification });
     } catch (error: any) {
+        logger.error("Error updating notification status", { error });
         res.status(500)
         throw new (error)
     }
@@ -40,15 +44,19 @@ export const updateNotificationStatus = asyncHandler(async (req: CustomRequest, 
 // GET /api/notifications
 export const getUserNotifications = asyncHandler(async (req: CustomRequest, res) => {
     try {
+        const userId = req.user.id;
+        logger.info(`Fetching notifications for user: ${userId}`);
         // Assuming req.user is populated by your authentication middleware
-        const notifications = await Notification.find({ user: req.user.id })
+        const notifications = await Notification.find({ user: userId })
             .sort({ createdAt: -1 }); // Optional: sort notifications by newest first
 
+        logger.info(`Fetched ${notifications.length} notifications`);
         res.status(200).json({
             message: "Notifications fetched successfully",
             data: notifications,
         });
     } catch (error: any) {
+        logger.error("Error fetching user notifications", { error });
         res.status(500)
         throw new (error)
     }
@@ -70,6 +78,7 @@ export const getNotificationById = asyncHandler(async (req: CustomRequest, res) 
 
         // Ensure the notification belongs to the authenticated user
         if (notification.user.toString() !== req.user.id) {
+            logger.warn(`User ${req.user.id} unauthorized to access notification ${id}`);
             res.status(403);
             throw new Error("Not authorized to access this notification");
         }
@@ -79,6 +88,7 @@ export const getNotificationById = asyncHandler(async (req: CustomRequest, res) 
             data: notification,
         });
     } catch (error: any) {
+        logger.error("Error fetching notification by id", { error });
         res.status(500)
         throw new (error)
     }
@@ -89,6 +99,7 @@ export const getNotificationById = asyncHandler(async (req: CustomRequest, res) 
 export const markAllNotificationsAsRead = asyncHandler(async (req: CustomRequest, res) => {
     // Assumes req.user is populated by authentication middleware
     const userId = req.user.id;
+    logger.info(`Marking all notifications as read for user: ${userId}`);
 
     try {
         // Update all unread notifications for this user to isRead: true
@@ -97,11 +108,13 @@ export const markAllNotificationsAsRead = asyncHandler(async (req: CustomRequest
             { isRead: true }
         );
 
+        logger.info(`Marked ${result.modifiedCount} notifications as read`);
         res.status(200).json({
             message: "All notifications marked as read",
             data: result,
         });
     } catch (error: any) {
+        logger.error("Error marking all notifications as read", { error });
         res.status(500)
         throw new (error)
     }
@@ -111,6 +124,7 @@ export const markAllNotificationsAsRead = asyncHandler(async (req: CustomRequest
 // GET /api/notifications/stream - SSE endpoint for real-time notifications
 export const sseStream = asyncHandler(async (req: CustomRequest, res) => {
     const userId = req.user.id;
+    logger.info(`SSE stream connection initiated for user: ${userId}`);
 
     // Add this client to the SSE service
     const clientId = sseNotificationService.addClient(userId, res);

@@ -3,6 +3,7 @@ import { CustomRequest } from "../middleware/validateTokenHandler";
 import { Response } from "express";
 import { Team, UserProfile, SearchHistory, TeamChallenge, Role, User } from "../models";
 import mongoose from "mongoose";
+import logger from "../services/logger";
 
 export const search = asyncHandler(
   async (req: CustomRequest, res: Response) => {
@@ -15,6 +16,7 @@ export const search = asyncHandler(
     }
 
     const query = String(q).trim();
+    logger.info(`Searching for: ${query}`);
 
     try {
       // Get superadmin role ID to exclude superadmin users
@@ -138,6 +140,7 @@ export const search = asyncHandler(
 
       });
     } catch (err) {
+      logger.error("Error performing search", { error: err });
       res.status(500)
       throw new Error(`Search failed with error: ${err}`);
     }
@@ -157,8 +160,11 @@ export const searchHistory = asyncHandler(
       const history = await SearchHistory.find({ userId })
         .sort({ timestamp: -1 })
         .limit(10); // return latest 10
+
+      logger.info(`Fetched search history for user: ${userId}`);
       res.status(200).json({ data: history });
     } catch (err) {
+      logger.error("Error fetching search history", { error: err });
       res.status(500).json({ message: "Failed to get search history", error: err });
     }
   }
@@ -169,6 +175,7 @@ export const allSearchTeams = asyncHandler(
     const searchQuery = String(req.query.q || "").trim();
     const page = Number(req.query.page || 1);
     const pageSize = 10;
+    logger.info(`Searching all teams: ${searchQuery}`);
 
     const teams = await Team.find({
       $or: [
@@ -200,6 +207,7 @@ export const allSearchChallenges = asyncHandler(
     const searchQuery = String(req.query.q || "").trim();
     const page = Number(req.query.page || 1);
     const pageSize = 10;
+    logger.info(`Searching all challenges: ${searchQuery}`);
 
     const challenges = await TeamChallenge.find({
       $or: [
@@ -229,6 +237,7 @@ export const allSearchProfiles = asyncHandler(
     const searchQuery = String(req.query.q || "").trim();
     const page = Number(req.query.page || 1);
     const pageSize = 10;
+    logger.info(`Searching all profiles: ${searchQuery}`);
 
     // Get deleted users to exclude from search
     const deletedUserIds = await User.find({ deletedAt: { $ne: null } }).select('_id').lean();
@@ -288,8 +297,10 @@ export const clearSearchHistory = asyncHandler(
 
     try {
       await SearchHistory.deleteMany({ userId });
+      logger.info(`Search history cleared for user: ${userId}`);
       res.status(200).json({ message: "Search history cleared successfully" });
     } catch (err) {
+      logger.error("Error clearing search history", { error: err });
       res.status(500).json({ message: "Failed to clear search history", error: err });
     }
   }
@@ -311,6 +322,7 @@ export const searchUsersAndTeams = asyncHandler(
     const skip = (currentPage - 1) * limit;
 
     try {
+      logger.info(`Searching users and teams: ${query}`);
       // Get deleted users to exclude from search
       const deletedUserIds = await User.find({ deletedAt: { $ne: null } }).select('_id').lean();
       const excludedUserIds = deletedUserIds.map((user: any) => user._id);
@@ -398,6 +410,7 @@ export const searchUsersAndTeams = asyncHandler(
         }
       });
     } catch (err) {
+      logger.error("Error searching users and teams", { error: err });
       res.status(500)
       throw new Error(`Search failed with error: ${err}`);
     }

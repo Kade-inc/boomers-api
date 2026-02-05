@@ -32,6 +32,7 @@ const s3 = new S3Client({
 //access public
 export const getProfile = asyncHandler(async (req: Request, res: Response) => {
   try {
+    logger.info(`Fetching profile for user: ${req.params.id}`);
     const profile = await UserProfile.findOne({ user_id: req.params.id });
     if (!profile) {
       res.status(404).json({ message: "User profile does not exist" });
@@ -47,11 +48,13 @@ export const getProfile = asyncHandler(async (req: Request, res: Response) => {
 
       if (url) profile.profile_picture = url;
     }
+    logger.info(`Fetched profile for user: ${req.params.id}`);
     res.status(200).json({
       successful: true,
       profile,
     });
   } catch (error: any) {
+    logger.error("Error fetching user profile", { error });
     res.status(400);
     throw new Error(error);
   }
@@ -62,6 +65,7 @@ export const getProfile = asyncHandler(async (req: Request, res: Response) => {
 //access private
 export const updateUserProfile = asyncHandler(async (req: any, res) => {
   try {
+    logger.info(`Updating profile for user: ${req.params.id}`);
     const profile = await UserProfile.findOne({ user_id: req.params.id });
     if (!profile) {
       res.status(404);
@@ -295,8 +299,10 @@ export const updateUserProfile = asyncHandler(async (req: any, res) => {
         : null;
     }
 
+    logger.info(`Profile updated for user: ${req.params.id}`);
     res.status(200).json(updatedProfile);
   } catch (error: any) {
+    logger.error("Error updating user profile", { error });
     res.status(500);
     throw new Error(error);
   }
@@ -308,6 +314,7 @@ export const updateUserProfile = asyncHandler(async (req: any, res) => {
 export const deleteProfilePicture = asyncHandler(async (req: any, res) => {
   try {
     const userId = req.params.id;
+    logger.info(`Deleting profile picture for user: ${userId}`);
     const profile = await UserProfile.findOne({ user_id: userId });
     if (!profile) {
       res.status(404).json({ error: "Profile not found." });
@@ -333,8 +340,10 @@ export const deleteProfilePicture = asyncHandler(async (req: any, res) => {
     const deleteCommand = new DeleteObjectCommand(deleteParams);
     await s3.send(deleteCommand);
     await UserProfile.findByIdAndUpdate(profile._id, { profile_picture: null });
+    logger.info(`Profile picture deleted for user: ${userId}`);
     res.status(204).json({ message: "Profile picture deleted" });
   } catch (error: any) {
+    logger.error("Error deleting profile picture", { error });
     res.status(500);
     throw new Error(error);
   }

@@ -29,6 +29,7 @@ export const addTeamMember = asyncHandler(
   async (req: CustomRequest, res: Response) => {
     try {
       const { team_id, username, email } = req.body;
+      logger.info(`Adding team member: ${username || email} to team: ${team_id}`);
       if (!username.trim() && !email.trim()) {
         res.status(400);
         throw new Error("Please put username or email");
@@ -104,8 +105,10 @@ export const addTeamMember = asyncHandler(
       sseNotificationService.sendNotification(userExists._id.toString(), notification);
       logger.debug("Notification sent via SSE to user " + userExists._id.toString(), { notification });
 
+      logger.info(`Team member added: ${teamMember._id}`);
       res.status(201).json({ message: "successful", data: teamMember });
     } catch (error: any) {
+      logger.error("Error adding team member", { error });
       throw new Error(error);
     }
   }
@@ -118,6 +121,7 @@ export const joinTeam = asyncHandler(
   async (req: CustomRequest, res: Response) => {
     try {
       const { team_id, user_id } = req.body;
+      logger.info(`Joining team: ${team_id}, user: ${user_id}`);
 
       const userId = user_id;
 
@@ -216,8 +220,10 @@ export const joinTeam = asyncHandler(
       });
       queueEmail(owner.email, emailTemplate, "Team Member Request");
 
+      logger.info("Join request sent successfully");
       res.status(201).json({ message: "successful", data: teamMemberRequest });
     } catch (error: any) {
+      logger.error("Error joining team", { error });
       throw new Error(error);
     }
   }
@@ -229,6 +235,7 @@ export const joinTeam = asyncHandler(
 export const updateJoinRequest = asyncHandler(
   async (req: CustomRequest, res: Response) => {
     try {
+      logger.info(`Updating join request: ${req.params.id}`);
       const memberRequest = await TeamMemberRequest.findById({
         _id: req.params.id,
       });
@@ -322,8 +329,10 @@ export const updateJoinRequest = asyncHandler(
       });
       queueEmail(userExists.email, emailTemplate, "Team Member Request");
 
+      logger.info(`Join request updated: ${req.params.id}`);
       res.status(200).json({ message: "successful", data: updatedRequest });
     } catch (error: any) {
+      logger.error("Error updating join request", { error });
       throw new Error(error);
     }
   }
@@ -369,10 +378,12 @@ export const deleteTeamMember = asyncHandler(
       sseNotificationService.sendNotification(teamMember.user_id.toString(), notification);
       logger.debug("Notification sent via SSE to user " + teamMember.user_id.toString(), { notification });
 
+      logger.info(`Team member removed: ${teamMember._id}`);
       res.status(204).json({
         message: "Team member removed successfully",
       });
     } catch (error: any) {
+      logger.error("Error removing team member", { error });
       res.status(500);
       throw new Error(error);
     }
@@ -385,6 +396,7 @@ export const deleteTeamMember = asyncHandler(
 export const leaveTeam = asyncHandler(
   async (req: CustomRequest, res: Response) => {
     try {
+      logger.info(`User leaving team: ${req.user.id}, Team: ${req.params.teamId}`);
       const teamMember = await TeamMember.findOne({
         user_id: req.user.id,
         team_id: req.params.teamId,
@@ -401,10 +413,12 @@ export const leaveTeam = asyncHandler(
       }
 
       await TeamMember.findByIdAndDelete(teamMember?._id);
+      logger.info(`User left team: ${req.user.id}`);
       res.status(204).json({
         message: "You left the team successfully",
       });
     } catch (error: any) {
+      logger.error("Error leaving team", { error });
       res.status(400);
       throw new Error(error);
     }
@@ -417,6 +431,7 @@ export const leaveTeam = asyncHandler(
 export const fetchTeamMemberRequests = asyncHandler(
   async (req: CustomRequest, res: Response) => {
     try {
+      logger.info(`Fetching team member requests for team: ${req.params.teamId}`);
       const teamMemberRequests = await TeamMemberRequest.find({
         team_id: req.params.teamId,
       });
@@ -456,6 +471,7 @@ export const fetchTeamMemberRequests = asyncHandler(
 
       res.status(200).json({ message: "successful", data: mergedRequests });
     } catch (error: any) {
+      logger.error("Error fetching team member requests", { error });
       res.status(400);
       throw new Error(error);
     }

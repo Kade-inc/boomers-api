@@ -32,6 +32,7 @@ const registerUser = asyncHandler(async (req: Request, res: Response) => {
       teamId,
       source = "web",
     } = req.body;
+    logger.info(`Registering user: ${username}`);
 
     if (!email && !phoneNumber) {
       res.status(400);
@@ -159,9 +160,11 @@ const registerUser = asyncHandler(async (req: Request, res: Response) => {
         queueEmail(email, emailTemplate);
       }
     } else {
+      logger.warn("User registration failed: User not created");
       res.status(400).json({ error: "User not registered." });
     }
   } catch (error: any) {
+    logger.error("Error registering user", { error });
     throw new Error(error);
   }
 });
@@ -172,6 +175,7 @@ const registerUser = asyncHandler(async (req: Request, res: Response) => {
 export const verifyUser = asyncHandler(async (req: Request, res: Response) => {
   try {
     const { verificationCode, accountId } = req.body;
+    logger.info(`Verifying user: ${accountId}`);
 
     if (!accountId) {
       res.status(400).json({ message: "Please put email or phoneNumber" });
@@ -253,6 +257,7 @@ export const verifyUser = asyncHandler(async (req: Request, res: Response) => {
       }
     }
   } catch (error: any) {
+    logger.error("Error verifying user", { error });
     res.status(400).json({ error: error });
   }
 });
@@ -264,6 +269,7 @@ export const resendVerificationCode = asyncHandler(
   async (req: Request, res: Response) => {
     try {
       const { email, phoneNumber, countryCode } = req.body;
+      logger.info(`Resending verification code to: ${email || phoneNumber}`);
       if (!email && !phoneNumber) {
         res.status(400);
         throw new Error("Please put an email or phone number");
@@ -343,6 +349,7 @@ export const resendVerificationCode = asyncHandler(
         res.status(400).json({ error: "User does not exist" });
       }
     } catch (error: any) {
+      logger.error("Error resending verification code", { error });
       res.status(400).json({ error: error });
     }
   }
@@ -373,6 +380,7 @@ export const getUsers = asyncHandler(async (req: Request, res: Response) => {
     const { search } = req.query;
     const bucketPrefix = process.env.S3_BUCKET_PREFIX || "";
     let users;
+    logger.info(`Fetching users with search: ${search || "all"}`);
 
     // Find the superadmin role to exclude it
     const superadminRole = await Role.findOne({ name: "superadmin" });
@@ -427,6 +435,7 @@ export const getUsers = asyncHandler(async (req: Request, res: Response) => {
 
     res.json(users);
   } catch (error: any) {
+    logger.error("Error getting users", { error });
     res
       .status(500)
       .json({ message: "Error searching for users", error: error.message });
@@ -449,6 +458,7 @@ export const currentUser = asyncHandler(
 export const forgotPassword = async (req: Request, res: Response) => {
   const { email, source = "web" } = req.body;
   try {
+    logger.info(`Forgot password request for: ${email}`);
     // Check if the user exists in the database:
     const user = await User.findOne({ email });
     if (!user) {
@@ -555,6 +565,7 @@ export const forgotPassword = async (req: Request, res: Response) => {
       });
     }
   } catch (error: any) {
+    logger.error("Error in forgot password", { error });
     res.status(400).json({ error: error });
   }
 };
@@ -566,6 +577,8 @@ export const resetPassword = async (req: Request, res: Response) => {
   try {
     // Extract userId, token, and newPassword from request body
     const { userId, token, password } = req.body;
+
+    logger.info(`Resetting password for user: ${userId}`);
 
     const user = await User.find({ _id: userId });
 
@@ -617,8 +630,10 @@ export const resetPassword = async (req: Request, res: Response) => {
     // Assuming you have a function sendMail defined somewhere
     queueEmail(user[0].email, emailTemplate, "Password Reset");
     // Return success response
+    logger.info(`Password reset successfully for user: ${userId}`);
     res.status(200).json({ message: "Password reset successfully" });
   } catch (error) {
+    logger.error("Error resetting password", { error });
     res.status(400).json({ error: error });
   }
 };
@@ -739,6 +754,7 @@ export const deleteUser = asyncHandler(
         (requestingUser.role as any).name === "superadmin";
 
       if (requestingUserId !== userIdToDelete && !isAdmin) {
+        logger.warn(`User ${requestingUserId} unauthorized to delete user ${userIdToDelete}`);
         res.status(403).json({ message: "Not authorized to delete this user" });
         return;
       }

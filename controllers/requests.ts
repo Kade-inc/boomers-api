@@ -7,7 +7,7 @@ import logger from "../services/logger";
 export const fetchRequests = asyncHandler(
   async (req: CustomRequest, res: Response) => {
     const userId = req.user.id
-    logger.debug("Fetching requests for user", { userId });
+    logger.info(`Fetching requests for user: ${userId}`);
     try {
       const s3Prefix = process.env.S3_BUCKET_PREFIX || "";
 
@@ -51,11 +51,12 @@ export const fetchRequests = asyncHandler(
         }
         return request;
       });
+      logger.info(`Fetched ${requests.length} requests for user ${userId}`);
       res.status(200).json({ data: requests })
     } catch (error: any) {
+      logger.error("Error fetching requests", { error });
       res.status(500)
       throw new Error(error);
     }
   }
 );
-

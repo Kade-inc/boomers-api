@@ -12,6 +12,7 @@ import logger from "../services/logger";
 export const getAllChallenges = asyncHandler(
   async (req: CustomRequest, res: Response) => {
     try {
+      logger.info(`Fetching challenges for user: ${req.query.userId || 'all'} with valid=${req.query.valid}`);
       let challenges: any = [];
 
       if (req.query.userId) {
@@ -71,8 +72,10 @@ export const getAllChallenges = asyncHandler(
         challenges = await TeamChallenge.find({ valid: true });
       }
 
+      logger.info(`Fetched ${challenges.length} challenges`);
       res.status(200).json({ message: "successful", data: challenges });
     } catch (error: any) {
+      logger.error(`Error fetching challenges: ${error.message}`);
       res.status(400);
       throw new Error(error.message);
     }
@@ -86,16 +89,20 @@ export const getAllChallenges = asyncHandler(
 export const getChallenge = asyncHandler(
   async (req: CustomRequest, res: Response) => {
     try {
+      logger.info(`Fetching challenge with id: ${req.params.id}`);
       const challenge = await TeamChallenge.findById({ _id: req.params.id });
 
       if (!challenge) {
+        logger.warn(`Challenge not found with id: ${req.params.id}`);
         res.status(404)
         throw new Error("Challenge not found")
         // res.status(404).json({ message: "Challenge not found" });
       } else {
+        logger.info(`Challenge fetched successfully: ${req.params.id}`);
         res.status(200).json({ message: "successful", data: challenge });
       }
     } catch (error: any) {
+      logger.error(`Error fetching challenge: ${error.message}`);
       res.status(400)
       throw new Error(error)
     }

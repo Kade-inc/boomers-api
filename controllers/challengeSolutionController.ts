@@ -58,12 +58,14 @@ interface PopulatedRatingResponse extends Document {
 export const postChallengeSolution = asyncHandler(
   async (req: CustomRequest, res: Response) => {
     try {
+      logger.info(`Posting challenge solution for user: ${req.user.id}, challenge: ${req.params.id}`);
       const challenge_id = req.params.id;
       const challengeExists: any = await TeamChallenge.find({
         _id: challenge_id,
       });
 
       if (!challengeExists.length) {
+        logger.warn(`Challenge not found: ${challenge_id}`);
         res.status(404).json({ message: "Challenge does not exist" });
         return;
       }
@@ -82,6 +84,7 @@ export const postChallengeSolution = asyncHandler(
       });
 
       if (!teamMemberExists) {
+        logger.warn(`User ${req.user.id} not in team for challenge ${challenge_id}`);
         res.status(403).json({ message: "User does not belong to the team" });
       } else {
         const solutionExists = await ChallengeSolution.find({
@@ -98,10 +101,12 @@ export const postChallengeSolution = asyncHandler(
             user_id: req.user.id,
           });
 
+          logger.info(`Challenge solution created: ${challengeSolution._id}`);
           res
             .status(201)
             .json({ message: "successful", data: challengeSolution });
         } else {
+          logger.warn(`User ${req.user.id} already started challenge ${challenge_id}`);
           res
             .status(409)
             .json({ error: "User has already began taking the quiz." });
@@ -121,6 +126,7 @@ export const updateChallengeSolution = asyncHandler(
   async (req: CustomRequest, res: Response) => {
     try {
       const solutionId = req.params.solutionId;
+      logger.info(`Updating challenge solution: ${solutionId}`);
       const initialChallengeSolution = await ChallengeSolution.findById({ _id: solutionId }).populate({
         path: 'user_id',
         model: 'User',
@@ -138,10 +144,12 @@ export const updateChallengeSolution = asyncHandler(
       });
 
       if (!initialChallengeSolution || !challenge) {
+        logger.warn(`Solution or challenge not found: ${solutionId} / ${req.params.id}`);
         res.status(404).json({ error: "Solution does not exist" });
         return;
       }
       if (req.user.id !== (initialChallengeSolution?.user_id as any)._id.toString()) {
+        logger.warn(`User ${req.user.id} unauthorized to update solution ${solutionId}`);
         res.status(403).json({ error: "Solution does not belong to you" });
         return;
       } else {
@@ -183,8 +191,6 @@ export const updateChallengeSolution = asyncHandler(
           // Send notification via SSE
           sseNotificationService.sendNotification(challenge.owner_id.toString(), notification);
           logger.debug("Notification sent via SSE to challenge owner " + challenge.owner_id.toString(), { notification });
-
-
         }
 
         const updatedSolution = await ChallengeSolution.findByIdAndUpdate(
@@ -197,6 +203,7 @@ export const updateChallengeSolution = asyncHandler(
           },
           { new: true }
         );
+        logger.info(`Challenge solution updated: ${solutionId}`);
         res.status(200).json({ message: "successful", data: updatedSolution });
       }
     } catch (error: any) {
@@ -213,6 +220,7 @@ export const getChallengeSolution = asyncHandler(
   async (req: CustomRequest, res: Response) => {
     try {
       const solutionId = req.params.solutionId;
+      logger.info(`Getting challenge solution: ${solutionId}`);
 
       const solution = await ChallengeSolution.findById({ _id: solutionId })
         .populate({
@@ -232,6 +240,7 @@ export const getChallengeSolution = asyncHandler(
         });
 
       if (!solution) {
+        logger.warn(`Solution not found: ${solutionId}`);
         res.status(404).json({ message: "Solution not found" });
         return;
       }
@@ -259,6 +268,7 @@ export const getAllChallengeSolutions = asyncHandler(
   async (req: CustomRequest, res: Response) => {
     try {
       const challengeId = req.params.id;
+      logger.info(`Getting all solutions for challenge: ${challengeId}`);
 
       const solutions = await ChallengeSolution.find({
         challenge_id: challengeId,
@@ -289,6 +299,7 @@ export const getAllChallengeSolutions = asyncHandler(
         };
       });
 
+      logger.info(`Fetched ${transformedSolutions.length} solutions for challenge ${challengeId}`);
       res.status(200).json({ message: "successful", data: transformedSolutions });
     } catch (error: any) {
       logger.error("Error getting all challenge solutions", { error });
@@ -304,6 +315,7 @@ export const deleteChallengeSolution = asyncHandler(
   async (req: CustomRequest, res: Response) => {
     try {
       const solution_id = req.params.solutionId;
+      logger.info(`Deleting challenge solution: ${solution_id}`);
       const solution = await ChallengeSolution.findById({ _id: solution_id });
 
       const challenge = await TeamChallenge.findById({
@@ -311,10 +323,12 @@ export const deleteChallengeSolution = asyncHandler(
       });
 
       if (!solution || !challenge) {
+        logger.warn(`Solution or challenge not found for deletion: ${solution_id} / ${req.params.id}`);
         res.status(404).json({ error: "Solution does not exist" });
         return;
       }
       if (req.user.id !== solution?.user_id.toString()) {
+        logger.warn(`User ${req.user.id} unauthorized to delete solution ${solution_id}`);
         res.status(403).json({ error: "Solution does not belong to you" });
         return;
       } else {
@@ -322,6 +336,7 @@ export const deleteChallengeSolution = asyncHandler(
 
         await ChallengeStep.deleteMany({ solution_id: { $in: solution_id } });
 
+        logger.info(`Challenge solution deleted: ${solution_id}`);
         res.status(204).json({ message: "successful" });
       }
     } catch (error: any) {
@@ -457,6 +472,7 @@ export const postSolutionComment = asyncHandler(
           }
         }
 
+        logger.info(`Comment posted on solution: ${req.params.solutionId}`);
         res.status(201).json({ message: "successful", data: solutionComment });
       }
     } catch (error: any) {
@@ -473,6 +489,7 @@ export const updateSolutionComment = asyncHandler(
   async (req: CustomRequest, res: Response) => {
     try {
       const challenge_id = req.params.id;
+      logger.info(`Updating solution comment: ${req.params.commentId}`);
       const challengeExists: any = await TeamChallenge.find({
         _id: challenge_id,
       });
@@ -510,6 +527,7 @@ export const updateSolutionComment = asyncHandler(
         });
 
         if (solutionComment[0]?.user.toString() !== req.user.id) {
+          logger.warn(`User ${req.user.id} tried to update comment belonging to ${solutionComment[0]?.user}`);
           res.status(403).json({ error: "This is not your comment" });
           return;
         }
@@ -538,6 +556,7 @@ export const getSolutionComments = asyncHandler(
   async (req: CustomRequest, res: Response) => {
     try {
       const challenge_id = req.params.id;
+      logger.info(`Getting comments for solution: ${req.params.solutionId}`);
       const challengeExists: any = await TeamChallenge.find({
         _id: challenge_id,
       });
@@ -562,6 +581,7 @@ export const getSolutionComments = asyncHandler(
         }
       });
 
+      logger.info(`Fetched ${solutionComments.length} comments for solution`);
       res.status(200).json({ message: "successful", data: solutionComments });
     } catch (error: any) {
       logger.error("Error getting solution comments", { error });
@@ -577,6 +597,7 @@ export const getSolutionComment = asyncHandler(
   async (req: CustomRequest, res: Response) => {
     try {
       const challenge_id = req.params.id;
+      logger.info(`Getting comment: ${req.params.commentId}`);
       const challengeExists: any = await TeamChallenge.find({
         _id: challenge_id,
       });
@@ -605,6 +626,7 @@ export const getSolutionComment = asyncHandler(
       });
 
       if (!solutionComment) {
+        logger.warn(`Comment not found: ${req.params.commentId}`);
         res.status(404).json({ message: "Comment not found" });
         return;
       }
@@ -649,6 +671,7 @@ export const deleteSolutionComment = asyncHandler(
 
       await SolutionComment.findByIdAndDelete(req.params.commentId);
 
+      logger.info(`Comment deleted: ${req.params.commentId}`);
       res.status(204).json({ message: "successful" });
     } catch (error: any) {
       logger.error("Error deleting solution comment", { error });
@@ -774,8 +797,10 @@ export const postSolutionRating = asyncHandler(
       sseNotificationService.sendNotification(solution.user_id.toString(), notification);
       logger.debug("Notification sent via SSE to user " + solution.user_id.toString(), { notification });
 
+      logger.info(`Rating posted: ${response._id} for solution ${req.params.solutionId}`);
       res.status(201).json({ message: "successful", data: response });
     } catch (error: any) {
+      logger.error("Error posting solution rating", { error });
       res.status(500).json({ error: error.message });
     }
   }
@@ -809,6 +834,7 @@ export const getSolutionRatings = asyncHandler(
         solution_id: req.params.solutionId,
       });
 
+      logger.info(`Fetched ${response.length} ratings for solution ${req.params.solutionId}`);
       res.status(200).json({ message: "successful", data: response });
     } catch (error: any) {
       logger.error("Error getting solution ratings", { error });
@@ -843,6 +869,7 @@ export const getSolutionRating = asyncHandler(
 
       const response = await SolutionRating.findById(req.params.ratingId);
 
+      logger.info(`Fetched rating: ${req.params.ratingId}`);
       res.status(200).json({ message: "successful", data: response });
     } catch (error: any) {
       logger.error("Error getting solution rating", { error });
@@ -935,6 +962,7 @@ export const updateSolutionRating = asyncHandler(
         );
       }
 
+      logger.info(`Rating updated: ${req.params.ratingId}`);
       res.status(200).json({ message: "successful", data: response });
     } catch (error: any) {
       logger.error("Error updating solution rating", { error });
@@ -1017,8 +1045,10 @@ export const deleteSolutionRating = asyncHandler(
         );
       }
 
+      logger.info(`Rating deleted: ${req.params.ratingId}`);
       res.status(204).json({ message: "successful" });
     } catch (error: any) {
+      logger.error("Error deleting solution rating", { error });
       res.status(500).json({ error: error.message });
     }
   }

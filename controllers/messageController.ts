@@ -43,6 +43,7 @@ export const createMessage = asyncHandler(
       // Emit new message to all users in the chat room
       req.app.locals.io.to(`chat_${chatId}`).emit("newMessage", response);
 
+      logger.info(`Message created in chat: ${chatId} by user: ${senderId}`);
       res.status(201).json(response);
     } catch (error) {
       logger.error("Error creating message", { error });
@@ -54,10 +55,12 @@ export const createMessage = asyncHandler(
 export const getMessages = asyncHandler(
   async (req: CustomRequest, res: Response) => {
     const { chatId } = req.params;
+    logger.info(`Fetching messages for chat: ${chatId}`);
     try {
       const messages = await Message.find({
         chatId,
       });
+      logger.info(`Fetched ${messages.length} messages for chat: ${chatId}`);
       res.status(200).json(messages);
     } catch (error) {
       logger.error("Error getting messages", { error });
@@ -72,6 +75,7 @@ export const updateMessage = asyncHandler(
     const senderId = req.user.id
     const { messageId } = req.params;
     const { text } = req.body;
+    logger.info(`Updating message: ${messageId}`);
 
     try {
       // Find the message by ID
@@ -92,6 +96,7 @@ export const updateMessage = asyncHandler(
       // Update the message text
       message.text = text;
       const updatedMessage = await message.save();
+      logger.info(`Message updated: ${messageId}`);
       res.status(200).json(updatedMessage);
     } catch (error) {
       logger.error("Error updating message", { error });
@@ -104,6 +109,7 @@ export const deleteMessage = asyncHandler(
   async (req: CustomRequest, res: Response) => {
     const senderId = req.user.id
     const { messageId } = req.params;
+    logger.info(`Deleting message: ${messageId}`);
 
     try {
       // Find the message by ID
@@ -123,6 +129,7 @@ export const deleteMessage = asyncHandler(
 
       // Delete the message
       await message.deleteOne()
+      logger.info(`Message deleted: ${messageId}`);
       res.status(200).json({ message: "Message deleted successfully." });
     } catch (error) {
       logger.error("Error deleting message", { error });
@@ -188,6 +195,7 @@ export const createMessageWithChat = asyncHandler(
         });
       }
 
+      logger.info(`Message created with chat (new=${isNewChat}): ${message._id}`);
       res.status(201).json({
         chat,
         message,

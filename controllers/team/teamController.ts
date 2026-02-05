@@ -17,6 +17,7 @@ import DomainTopic from "../../models/domainTopicModel";
 import UserProfile from "../../models/userProfileModel";
 import User from "../../models/userModel";
 import redisClient from "../../config/redisClient";
+import logger from "../../services/logger";
 
 const randomImageName = (bytes = 32) =>
   crypto.randomBytes(bytes).toString("hex");
@@ -60,6 +61,8 @@ export const createTeam = asyncHandler(
     try {
       const { name, domain, subdomain, subdomainTopics, teamColor } =
         req.body;
+      let team: any;
+      logger.info(`Creating team: ${name}`);
       if (!name.trim() || !domain.trim()) {
         res.status(400);
         throw new Error("Please put name and domain");
@@ -146,33 +149,27 @@ export const createTeam = asyncHandler(
           displayImage: randomImageName(),
           teamColor: teamColor,
         });
-
-        await TeamMember.create({
+      } else {
+        team = await Team.create({
+          name,
+          teamUsername,
+          domain: domainExists.name,
+          subdomain: subdomain,
+          subdomainTopics: subdomainTopics,
           owner_id: req.user.id,
-          team_id: team._id,
-          user_id: req.user.id,
+          teamColor: teamColor,
         });
-        res.status(201).json({ message: "successful", data: team });
-        return;
       }
-
-      const team = await Team.create({
-        name,
-        teamUsername,
-        domain: domainExists.name,
-        subdomain: subdomain,
-        subdomainTopics: subdomainTopics,
-        owner_id: req.user.id,
-        teamColor: teamColor,
-      });
 
       await TeamMember.create({
         owner_id: req.user.id,
         team_id: team._id,
         user_id: req.user.id,
       });
+      logger.info(`Team created: ${team._id}`);
       res.status(201).json({ message: "successful", data: team });
     } catch (error: any) {
+      logger.error("Error creating team", { error });
       throw new Error(error);
     }
   }
@@ -186,6 +183,7 @@ export const getAllTeams = asyncHandler(async (req: Request, res: Response) => {
     let teams: any = [];
     const { name, domain, subdomain, subdomainTopics, page, limit, userId } =
       req.query;
+    logger.info("Fetching teams");
 
     // Convert page and limit to numbers, or use defaults
     const pageNum = parseInt(page as string) || 1;
@@ -273,6 +271,7 @@ export const getAllTeams = asyncHandler(async (req: Request, res: Response) => {
 //access private
 export const getTeam = asyncHandler(async (req: Request, res: Response) => {
   try {
+    logger.info(`Fetching team: ${req.params.id}`);
     const team: any = await Team.findOne({ _id: req.params.id });
 
     if (!team) {
@@ -335,6 +334,7 @@ export const getTeam = asyncHandler(async (req: Request, res: Response) => {
     };
     res.status(200).json({ message: "successful", data: teamWithMembers });
   } catch (error: any) {
+    logger.error("Error fetching team", { error });
     throw new Error(error);
   }
 });
@@ -345,6 +345,7 @@ export const getTeam = asyncHandler(async (req: Request, res: Response) => {
 export const updateTeam = asyncHandler(
   async (req: CustomRequest, res: Response) => {
     try {
+      logger.info(`Updating team: ${req.params.id}`);
       const team = await Team.findOne({ _id: req.params.id });
 
       if (!team) {
@@ -480,6 +481,7 @@ export const updateTeam = asyncHandler(
 
       res.status(200).json({ message: "successful", data: updatedTeam });
     } catch (error: any) {
+      logger.error("Error updating team", { error });
       throw new Error(error);
     }
   }
@@ -490,6 +492,7 @@ export const updateTeam = asyncHandler(
 //access private
 export const deleteTeam = asyncHandler(async (req: Request, res: Response) => {
   try {
+    logger.info(`Deleting team: ${req.params.id}`);
     const team = await Team.findById(req.params.id);
     if (!team) {
       res.status(404);
@@ -502,8 +505,11 @@ export const deleteTeam = asyncHandler(async (req: Request, res: Response) => {
 
     // await Contact.remove()
     await Team.deleteOne({ _id: req.params.id });
+    logger.info(`Team deleted: ${req.params.id}`);
     res.status(200).json(team);
-  } catch (error) { }
+  } catch (error: any) {
+    logger.error("Error deleting team", { error });
+  }
 });
 
 //@desc Get Random Team
@@ -512,6 +518,7 @@ export const deleteTeam = asyncHandler(async (req: Request, res: Response) => {
 export const getRandomTeam = asyncHandler(
   async (req: CustomRequest, res: Response) => {
     try {
+      logger.info("Fetching random team spotlight");
       // Try to fetch the daily random team from Redis
       const cachedTeam = await redisClient.get(CACHE_KEY);
       if (cachedTeam) {
@@ -537,6 +544,7 @@ export const getRandomTeam = asyncHandler(
       // Return the newly selected team
       res.status(200).json(teamToCache);
     } catch (error: any) {
+      logger.error("Error fetching random team", { error });
       res.status(400).json({ error: error });
     }
   }
