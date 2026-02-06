@@ -18,6 +18,12 @@ import UserProfile from "../../models/userProfileModel";
 import User from "../../models/userModel";
 import redisClient from "../../config/redisClient";
 import logger from "../../services/logger";
+import ShortUrl from "../../models/shortUrlModel";
+import TeamMemberRequest from "../../models/teamMemberRequestModel";
+import Notification from "../../models/notificationModel";
+import sseNotificationService from "../../services/sseService";
+import Chat from "../../models/chatModel";
+import Message from "../../models/messageModel";
 
 const randomImageName = (bytes = 32) =>
   crypto.randomBytes(bytes).toString("hex");
@@ -490,25 +496,94 @@ export const updateTeam = asyncHandler(
 //@desc Delete team
 //@route DELETE /api/teams/:id
 //access private
-export const deleteTeam = asyncHandler(async (req: Request, res: Response) => {
+export const deleteTeam = asyncHandler(async (req: CustomRequest, res: Response) => {
   try {
-    logger.info(`Deleting team: ${req.params.id}`);
-    const team = await Team.findById(req.params.id);
+    const { id } = req.params;
+    logger.info(`Deleting team: ${id}`);
+
+    const team = await Team.findById(id);
+
     if (!team) {
       res.status(404);
       throw new Error("Team not found");
     }
-    //   if(contact.user_id.toString() !== req.user.id) {
-    //     res.status(403)
-    //     throw new Error("User doesn't have permission to update other user contacts")
-    // }
 
-    // await Contact.remove()
-    await Team.deleteOne({ _id: req.params.id });
-    logger.info(`Team deleted: ${req.params.id}`);
-    res.status(200).json(team);
+    // Permission Verification
+    // Check if user is owner OR superadmin
+    const user = await User.findById(req.user.id).populate("role");
+    const userRole = user?.role ? (user.role as any).name : "";
+
+    // Normalize role name check (handle 'Super Admin', 'superadmin', 'super_admin' etc if unsure, but strict check is better if consistent)
+    // Based on validateSuperAdmin.ts, it expects 'superadmin'
+    const isSuperAdmin = userRole === "superadmin";
+    const isOwner = team.owner_id.toString() === req.user.id;
+
+    if (!isOwner && !isSuperAdmin) {
+      res.status(403);
+      throw new Error("You do not have permission to delete this team");
+    }
+
+    // 1. Notify pending join requests
+    const pendingRequests = await TeamMemberRequest.find({
+      team_id: id,
+      status: "PENDING" // Assuming we only care about pending ones
+    });
+
+    if (pendingRequests.length > 0) {
+      logger.info(`Notifying ${pendingRequests.length} pending users about team deletion`);
+
+      const notificationPromises = pendingRequests.map(async (request: any) => {
+        try {
+          // Create DB Notification
+          const notification = await Notification.create({
+            user: request.user_id,
+            message: `The team "${team.name}" you requested to join has been deleted.`,
+            referenceModel: "Team", // Required field, even if reference is null
+            reference: null,       // Team is gone, so no reference
+            isRead: false
+          });
+
+          // Send SSE Notification
+          sseNotificationService.sendNotification(request.user_id.toString(), notification);
+        } catch (ctxError) {
+          logger.error(`Failed to notify user ${request.user_id} during team deletion`, { error: ctxError });
+        }
+      });
+
+      await Promise.all(notificationPromises);
+    }
+
+    // 2. Clean up Team Member Requests
+    await TeamMemberRequest.deleteMany({ team_id: id });
+
+    // 3. Clean up Team Members (The users themselves are not deleted, just the membership)
+    await TeamMember.deleteMany({ team_id: id });
+
+    // 4. Clean up Short URLs
+    await ShortUrl.deleteMany({ resourceType: "team", resourceId: id });
+
+    // 5. Clean up Chats and Messages
+    const teamChats = await Chat.find({ teamId: id });
+    const chatIds = teamChats.map(chat => chat._id);
+
+    if (chatIds.length > 0) {
+      await Message.deleteMany({ chatId: { $in: chatIds } });
+      await Chat.deleteMany({ _id: { $in: chatIds } });
+      logger.info(`Deleted ${chatIds.length} chats and associated messages for team ${id}`);
+    }
+
+    // 6. Delete the Team
+    // NOTE: Challenges, TeamChallenges, Solutions, Comments are PRESERVED as per requirements.
+    await Team.deleteOne({ _id: id });
+
+    logger.info(`Team deleted successfully: ${id} by user ${req.user.id}`);
+    res.status(200).json({ message: "Team deleted successfully", id });
+
   } catch (error: any) {
     logger.error("Error deleting team", { error });
+    // If it's a known error status, preserve it, otherwise 500
+    if (res.statusCode === 200) res.status(500);
+    throw new Error(error.message || error);
   }
 });
 
