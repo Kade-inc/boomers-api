@@ -105,6 +105,7 @@ const teamChallengeSchema = new Schema<ITeamChallenge>(
 teamChallengeSchema.index({
   challenge_name: "text"
 });
+teamChallengeSchema.index({ challenge_name: 1 }); // Standard index for regex/sorting
 const TeamChallenge = model<ITeamChallenge>(
   "TeamChallenge",
   teamChallengeSchema

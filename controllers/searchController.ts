@@ -17,129 +17,140 @@ export const search = asyncHandler(
     }
 
     const query = String(q).trim();
-    logger.info(`Searching for: ${query}`);
+    // Cache key: include userId to personalize exclusion lists if needed, though exclusion logic below is generic for now (superadmin/deleted users). 
+    // If exclusion logic changes per user, userId in key is vital.
+    const cacheKey = `search:global:${userId}:${query}`;
 
     try {
-      // Get superadmin role ID to exclude superadmin users
-      const superAdminRole = await Role.findOne({ name: 'superadmin' });
-      const superAdminUserIds = superAdminRole
-        ? await User.find({ role: superAdminRole._id }).select('_id').lean()
-        : [];
+      // 1. Try Cache
+      const cachedResult = await redisConnection.get(cacheKey);
+      if (cachedResult) {
+        logger.info(`Serving global search results from cache for: ${query}`);
+        res.status(200).json({ data: JSON.parse(cachedResult) });
+        return;
+      }
 
-      // Get deleted users to exclude from search
-      const deletedUserIds = await User.find({ deletedAt: { $ne: null } }).select('_id').lean();
+      logger.info(`Performing global search (DB): ${query}`);
 
-      // Combine both exclusion lists
+      // 2. Prepare Exclusion Lists (Parallel)
+      const [superAdminRole, deletedUsers] = await Promise.all([
+        Role.findOne({ name: 'superadmin' }).select('_id'),
+        User.find({ deletedAt: { $ne: null } }).select('_id').lean()
+      ]);
+
+      let superAdminUserIds: any[] = [];
+      if (superAdminRole) {
+        superAdminUserIds = await User.find({ role: superAdminRole._id }).select('_id').lean();
+      }
+
       const excludedUserIds = [
         ...superAdminUserIds.map((user: any) => user._id),
-        ...deletedUserIds.map((user: any) => user._id)
+        ...deletedUsers.map((user: any) => user._id)
       ];
 
-      // Search Teams by name or username
-      const teams = await Team.find({
-        $or: [
-          { name: { $regex: query, $options: "i" } },
-          { teamUsername: { $regex: query, $options: "i" } }
-        ]
-      }).select("_id name teamColor domain subdomain subdomainTopics").limit(10);
+      // 3. Execute all search queries in parallel
+      // We run 6 queries concurrently: 3 data fetches + 3 counts
+      const [
+        teams,
+        profiles,
+        challenges,
+        teamCount,
+        profileCount,
+        challengeCount
+      ] = await Promise.all([
+        // Search Teams
+        Team.find({
+          $or: [
+            { name: { $regex: query, $options: "i" } },
+            { teamUsername: { $regex: query, $options: "i" } }
+          ]
+        }).select("_id name teamColor domain subdomain subdomainTopics").limit(10),
 
-      // Search Profiles by name or job (excluding superadmin users)
-      let profiles = await UserProfile.find({
-        $and: [
-          {
-            $or: [
-              { firstName: { $regex: query, $options: "i" } },
-              { lastName: { $regex: query, $options: "i" } },
-              { username: { $regex: query, $options: "i" } },
-            ]
-          },
-          { user_id: { $nin: excludedUserIds } }
-        ]
-      }).select("user_id firstName lastName username profile_picture").limit(10);
+        // Search Profiles
+        UserProfile.find({
+          $and: [
+            {
+              $or: [
+                { firstName: { $regex: query, $options: "i" } },
+                { lastName: { $regex: query, $options: "i" } },
+                { username: { $regex: query, $options: "i" } },
+              ]
+            },
+            { user_id: { $nin: excludedUserIds } }
+          ]
+        }).select("user_id firstName lastName username profile_picture").limit(10),
 
-      profiles.map((profile: any) => {
+        // Search Challenges
+        TeamChallenge.find({
+          $or: [
+            { challenge_name: { $regex: query, $options: "i" } },
+          ],
+          valid: true,
+        }).select("_id challenge_name").limit(10),
+
+        // Count Teams
+        Team.countDocuments({
+          $or: [
+            { name: { $regex: query, $options: "i" } },
+            { teamUsername: { $regex: query, $options: "i" } }
+          ]
+        }),
+
+        // Count Profiles
+        UserProfile.countDocuments({
+          $and: [
+            {
+              $or: [
+                { firstName: { $regex: query, $options: "i" } },
+                { lastName: { $regex: query, $options: "i" } },
+                { username: { $regex: query, $options: "i" } },
+              ]
+            },
+            { user_id: { $nin: excludedUserIds } }
+          ]
+        }),
+
+        // Count Challenges
+        TeamChallenge.countDocuments({
+          $or: [{ challenge_name: { $regex: query, $options: "i" } }],
+          valid: true
+        })
+      ]);
+
+      // Process profile pictures
+      profiles.forEach((profile: any) => {
         profile.profile_picture = profile.profile_picture ? `${process.env.S3_BUCKET_PREFIX}${profile.profile_picture}` : null
-      }
-      )
-
-      const challenges = await TeamChallenge.find({
-        $or: [
-          { challenge_name: { $regex: query, $options: "i" } },
-        ],
-        valid: true, // only show valid challenges
-      }).select("_id challenge_name").limit(10);
-
-      const teamCount = await Team.countDocuments({
-        $or: [
-          { name: { $regex: query, $options: "i" } },
-          { teamUsername: { $regex: query, $options: "i" } }
-        ]
       });
 
-      const profileCount = await UserProfile.countDocuments({
-        $and: [
-          {
-            $or: [
-              { firstName: { $regex: query, $options: "i" } },
-              { lastName: { $regex: query, $options: "i" } },
-              { username: { $regex: query, $options: "i" } },
-            ]
-          },
-          { user_id: { $nin: excludedUserIds } }
-        ]
-      });
-
-      const challengeCount = await TeamChallenge.countDocuments({
-        $or: [{ challenge_name: { $regex: query, $options: "i" } }],
-        valid: true
-      });
-
-
-      // When using indexes revisit this
-      // Check if query.length < 3 to do the one above. If > 3, use indexes
-      // Indexes are good for performance
-      // const teams = await Team.find(
-      //     { $text: { $search: query } },
-      //     { score: { $meta: "textScore" } }
-      // ).sort({ score: { $meta: "textScore" } });
-
-      // const profiles = await UserProfile.find(
-      //     { $text: { $search: query } },
-      //     { score: { $meta: "textScore" } }
-      // ).sort({ score: { $meta: "textScore" } });
-
-      // const challenges = await TeamChallenge.find(
-      //     { $text: { $search: query }, valid: true },
-      //     { score: { $meta: "textScore" } }
-      //   ).sort({ score: { $meta: "textScore" } });
-
-
-      // Save search to history
+      // 4. Save search to history (Async - don't await blocking response)
       if (userId && mongoose.Types.ObjectId.isValid(userId as string)) {
-        await SearchHistory.findOneAndUpdate(
+        SearchHistory.findOneAndUpdate(
           { userId, term: query },
           { $set: { timestamp: new Date() } },
           { upsert: true }
-        );
+        ).catch(err => logger.error("Failed to save search history", err));
       }
 
-      res.status(200).json({
-        data: {
-          teams: {
-            results: teams,
-            hasMore: teamCount > 10
-          },
-          profiles: {
-            results: profiles,
-            hasMore: profileCount > 10
-          },
-          challenges: {
-            results: challenges,
-            hasMore: challengeCount > 10
-          }
+      const responseData = {
+        teams: {
+          results: teams,
+          hasMore: teamCount > 10
+        },
+        profiles: {
+          results: profiles,
+          hasMore: profileCount > 10
+        },
+        challenges: {
+          results: challenges,
+          hasMore: challengeCount > 10
         }
+      };
 
-      });
+      // 5. Cache result
+      await redisConnection.setex(cacheKey, 60, JSON.stringify(responseData));
+
+      res.status(200).json({ data: responseData });
+
     } catch (err) {
       logger.error("Error performing search", { error: err });
       res.status(500)
