@@ -347,9 +347,21 @@ export const searchUsersAndTeams = asyncHandler(
 
       logger.info(`Searching users and teams (DB): ${query}`);
 
-      // Get deleted users to exclude from search
-      const deletedUserIds = await User.find({ deletedAt: { $ne: null } }).select('_id').lean();
-      const excludedUserIds = deletedUserIds.map((user: any) => user._id);
+      // Prepare Exclusion Lists
+      const [superAdminRole, deletedUsers] = await Promise.all([
+        Role.findOne({ name: 'superadmin' }).select('_id'),
+        User.find({ deletedAt: { $ne: null } }).select('_id').lean()
+      ]);
+
+      let superAdminUserIds: any[] = [];
+      if (superAdminRole) {
+        superAdminUserIds = await User.find({ role: superAdminRole._id }).select('_id').lean();
+      }
+
+      const excludedUserIds = [
+        ...superAdminUserIds.map((user: any) => user._id),
+        ...deletedUsers.map((user: any) => user._id)
+      ];
 
       // Define query conditions
       const teamQuery = {
