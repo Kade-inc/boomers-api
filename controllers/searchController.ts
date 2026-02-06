@@ -1,6 +1,7 @@
 import asyncHandler from "express-async-handler";
 import { CustomRequest } from "../middleware/validateTokenHandler";
 import { Response } from "express";
+import { redisConnection } from "../config/redis";
 import { Team, UserProfile, SearchHistory, TeamChallenge, Role, User } from "../models";
 import mongoose from "mongoose";
 import logger from "../services/logger";
@@ -321,71 +322,90 @@ export const searchUsersAndTeams = asyncHandler(
     const limit = Number(pageSize);
     const skip = (currentPage - 1) * limit;
 
+    // Cache key generation
+    const cacheKey = `search:usersAndTeams:${userId}:${query}:${currentPage}:${limit}`;
+
     try {
-      logger.info(`Searching users and teams: ${query}`);
+      // 1. Try to fetch from cache
+      const cachedResult = await redisConnection.get(cacheKey);
+      if (cachedResult) {
+        logger.info(`Serving search results from cache for: ${query}`);
+        res.status(200).json(JSON.parse(cachedResult));
+        return;
+      }
+
+      logger.info(`Searching users and teams (DB): ${query}`);
+
       // Get deleted users to exclude from search
       const deletedUserIds = await User.find({ deletedAt: { $ne: null } }).select('_id').lean();
       const excludedUserIds = deletedUserIds.map((user: any) => user._id);
 
-      // Get all matching teams and profiles first
-      const [teams, profiles] = await Promise.all([
-        Team.find({
-          owner_id: userId,
-          $or: [
-            { name: { $regex: query, $options: "i" } },
-            { teamUsername: { $regex: query, $options: "i" } }
-          ]
-        })
-          .select("_id name teamColor domain subdomain subdomainTopics owner_id"),
+      // Define query conditions
+      const teamQuery = {
+        owner_id: userId,
+        $or: [
+          { name: { $regex: query, $options: "i" } },
+          { teamUsername: { $regex: query, $options: "i" } }
+        ]
+      };
 
-        UserProfile.find({
-          $and: [
-            {
-              $or: [
-                { firstName: { $regex: query, $options: "i" } },
-                { lastName: { $regex: query, $options: "i" } },
-                { username: { $regex: query, $options: "i" } },
-              ]
-            },
-            { user_id: { $nin: excludedUserIds } }
-          ]
-        })
-          .select("user_id firstName lastName username profile_picture")
+      const profileQuery = {
+        $and: [
+          {
+            $or: [
+              { firstName: { $regex: query, $options: "i" } },
+              { lastName: { $regex: query, $options: "i" } },
+              { username: { $regex: query, $options: "i" } },
+            ]
+          },
+          { user_id: { $nin: excludedUserIds } }
+        ]
+      };
+
+      // 2. Count total documents first to handle layout/pagination logic
+      const [teamCount, profileCount] = await Promise.all([
+        Team.countDocuments(teamQuery),
+        UserProfile.countDocuments(profileQuery)
       ]);
+
+      const totalCount = teamCount + profileCount;
+      let teams: any[] = [];
+      let profiles: any[] = [];
+
+      // 3. Optimized Pagination Logic (Sequential: Teams then Profiles)
+      if (skip < teamCount) {
+        // We need at least some teams
+        const teamLimit = Math.min(limit, teamCount - skip);
+        teams = await Team.find(teamQuery)
+          .select("_id name teamColor domain subdomain subdomainTopics owner_id")
+          .skip(skip)
+          .limit(teamLimit);
+
+        // If we didn't fill the page with teams, fetch profiles
+        if (teams.length < limit) {
+          const profileLimit = limit - teams.length;
+          // Profile skip is 0 because we are starting from the top of profiles
+          profiles = await UserProfile.find(profileQuery)
+            .select("user_id firstName lastName username profile_picture")
+            .skip(0)
+            .limit(profileLimit);
+        }
+      } else {
+        // We are past teams, only fetch profiles
+        const profileSkip = skip - teamCount;
+        profiles = await UserProfile.find(profileQuery)
+          .select("user_id firstName lastName username profile_picture")
+          .skip(profileSkip)
+          .limit(limit);
+      }
 
       // Process profile pictures
       profiles.forEach((profile: any) => {
         profile.profile_picture = profile.profile_picture ? `${process.env.S3_BUCKET_PREFIX}${profile.profile_picture}` : null
       });
 
-      // Get total counts
-      const [teamCount, profileCount] = await Promise.all([
-        Team.countDocuments({
-          owner_id: userId,
-          $or: [
-            { name: { $regex: query, $options: "i" } },
-            { teamUsername: { $regex: query, $options: "i" } }
-          ]
-        }),
-
-        UserProfile.countDocuments({
-          $and: [
-            {
-              $or: [
-                { firstName: { $regex: query, $options: "i" } },
-                { lastName: { $regex: query, $options: "i" } },
-                { username: { $regex: query, $options: "i" } },
-              ]
-            },
-            { user_id: { $nin: excludedUserIds } }
-          ]
-        })
-      ]);
-
-      const totalCount = teamCount + profileCount;
-
-      // Combine and format all results
-      const allResults = [
+      // Combine and format results
+      const results = [
         ...teams.map(team => ({
           ...team.toObject(),
           type: 'team'
@@ -396,19 +416,22 @@ export const searchUsersAndTeams = asyncHandler(
         }))
       ];
 
-      // Apply pagination to the combined results
-      const paginatedResults = allResults.slice(skip, skip + limit);
-
-      res.status(200).json({
+      const responseData = {
         data: {
-          results: paginatedResults,
+          results: results,
           pagination: {
             currentPage,
             totalPages: Math.ceil(totalCount / limit),
             totalResults: totalCount
           }
         }
-      });
+      };
+
+      // 4. Set cache with expiry (e.g., 60 seconds)
+      await redisConnection.setex(cacheKey, 60, JSON.stringify(responseData));
+
+      res.status(200).json(responseData);
+
     } catch (err) {
       logger.error("Error searching users and teams", { error: err });
       res.status(500)

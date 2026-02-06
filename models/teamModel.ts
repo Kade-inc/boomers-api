@@ -19,10 +19,12 @@ const teamSchema = new Schema<ITeam>(
       type: Schema.Types.ObjectId,
       required: true,
       ref: "User",
+      index: true,
     },
     name: {
       type: String,
       required: true,
+      index: true,
     },
     isActive: {
       type: Boolean,

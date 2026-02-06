@@ -123,6 +123,10 @@ userProfileSchema.index({
   username: "text",
 });
 
+userProfileSchema.index({ firstName: 1 });
+userProfileSchema.index({ lastName: 1 });
+userProfileSchema.index({ username: 1 });
+
 // 2dsphere index on locationGeo for geospatial queries:
 // userProfileSchema.index({ locationGeo: "2dsphere" });
 
