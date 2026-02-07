@@ -20,6 +20,7 @@ const accessKey: any = process.env.ACCESS_KEY;
 const secretAccessKey: any = process.env.SECRET_ACCESS_KEY;
 
 const s3 = new S3Client({
+  endpoint: process.env.S3_BUCKET_PREFIX,
   credentials: {
     accessKeyId: accessKey,
     secretAccessKey: secretAccessKey,
@@ -39,15 +40,9 @@ export const getProfile = asyncHandler(async (req: Request, res: Response) => {
       return;
     }
     if (profile.profile_picture) {
-      const getObjectParams = {
-        Bucket: bucketName,
-        Key: profile?.profile_picture,
-      };
-      const command = new GetObjectCommand(getObjectParams);
-      const url = await getSignedUrl(s3, command, { expiresIn: 3600 });
-
-      if (url) profile.profile_picture = url;
+      profile.profile_picture = await getProfileHelper(profile);
     }
+
     logger.info(`Fetched profile for user: ${req.params.id}`);
     res.status(200).json({
       successful: true,
@@ -208,9 +203,7 @@ export const updateUserProfile = asyncHandler(async (req: any, res) => {
         );
 
         if (updatedProfile) {
-          updatedProfile.profile_picture = updatedProfile?.profile_picture
-            ? `${process.env.S3_BUCKET_PREFIX}${updatedProfile.profile_picture}`
-            : null;
+          updatedProfile.profile_picture = await getProfileHelper(updatedProfile);
         }
 
         res.status(200).json(updatedProfile);
@@ -252,9 +245,7 @@ export const updateUserProfile = asyncHandler(async (req: any, res) => {
       );
 
       if (updatedProfile) {
-        updatedProfile.profile_picture = updatedProfile?.profile_picture
-          ? `${process.env.S3_BUCKET_PREFIX}${updatedProfile.profile_picture}`
-          : null;
+        updatedProfile.profile_picture = await getProfileHelper(updatedProfile);
       }
 
       res.status(200).json(updatedProfile);
@@ -349,6 +340,19 @@ export const deleteProfilePicture = asyncHandler(async (req: any, res) => {
   }
 });
 
+
+const getProfileHelper = async (profile: any) => {
+  const getObjectParams = {
+    Bucket: bucketName,
+    Key: profile?.profile_picture ?? undefined,
+  };
+  const command = new GetObjectCommand(getObjectParams);
+  const url = await getSignedUrl(s3, command, { expiresIn: 3600 });
+
+  if (url) profile.profile_picture = url;
+
+  return profile.profile_picture;
+}
 //   When updating interests
 //   {
 //     "interests": {
