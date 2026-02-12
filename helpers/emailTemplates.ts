@@ -4,26 +4,26 @@
  */
 
 interface EmailTemplateOptions {
-    title?: string;
-    greeting: string;
-    content: string;
-    buttonText?: string;
-    buttonLink?: string;
-    footer?: string;
+  title?: string;
+  greeting: string;
+  content: string;
+  buttonText?: string;
+  buttonLink?: string;
+  footer?: string;
 }
 
 /**
  * Generates a styled HTML email template
  */
 export const createEmailTemplate = ({
-    title,
-    greeting,
-    content,
-    buttonText,
-    buttonLink,
-    footer,
+  title,
+  greeting,
+  content,
+  buttonText,
+  buttonLink,
+  footer,
 }: EmailTemplateOptions): string => {
-    const buttonHtml = buttonText && buttonLink ? `
+  const buttonHtml = buttonText && buttonLink ? `
     <!-- CTA Button -->
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
       <tr>
@@ -34,9 +34,9 @@ export const createEmailTemplate = ({
     </table>
   ` : '';
 
-    const footerText = footer || '';
+  const footerText = footer || '';
 
-    return `
+  return `
 <!DOCTYPE html>
 <html>
 <head>
@@ -56,7 +56,7 @@ export const createEmailTemplate = ({
           <!-- Logo Header -->
           <tr>
             <td align="center" style="padding: 32px 40px; background-color: #000000;">
-              <h1 style="margin: 0; font-size: 28px; font-weight: 700; color: #ffffff; letter-spacing: 2px;">LOGO</h1>
+              <img src="${process.env.S3_PUBLIC_URL_PREFIX}/static/crafthyve-logo-white.png" alt="Crafthyve Logo" width="150" style="display: block; width: 150px; max-width: 100%; height: auto; border: 0;" />
             </td>
           </tr>
           <!-- Content -->
@@ -86,19 +86,19 @@ export const createEmailTemplate = ({
  * Generates a styled HTML email with a verification code displayed prominently
  */
 export const createCodeEmailTemplate = ({
-    greeting,
-    message,
-    code,
-    footer,
+  greeting,
+  message,
+  code,
+  footer,
 }: {
-    greeting: string;
-    message: string;
-    code: string;
-    footer?: string;
+  greeting: string;
+  message: string;
+  code: string;
+  footer?: string;
 }): string => {
-    return createEmailTemplate({
-        greeting,
-        content: `
+  return createEmailTemplate({
+    greeting,
+    content: `
       <p style="margin: 0 0 24px;">${message}</p>
       <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
         <tr>
@@ -108,8 +108,8 @@ export const createCodeEmailTemplate = ({
         </tr>
       </table>
     `,
-        footer,
-    });
+    footer,
+  });
 };
 
 export default createEmailTemplate;
