@@ -1,5 +1,10 @@
 import { Schema, model } from "mongoose";
 
+interface IMessageDeletedFor {
+  userId: string;
+  deletedAt: Date;
+}
+
 interface IChat {
   members: string[];
   isGroup?: boolean;
@@ -8,6 +13,8 @@ interface IChat {
   teamId?: string; // link to the team for team-based group chats
   teamColor?: string; // team's display color
   deletedBy?: string[]; // user IDs who have soft-deleted this chat
+  messagesDeletedFor?: IMessageDeletedFor[]; // per-user message history deletion timestamps
+  lastReadAt?: { userId: string; readAt: Date }[]; // per-user last-read timestamps
 }
 
 const chatSchema = new Schema<IChat>(
@@ -34,6 +41,20 @@ const chatSchema = new Schema<IChat>(
     },
     deletedBy: {
       type: [String],
+      default: [],
+    },
+    messagesDeletedFor: {
+      type: [{
+        userId: { type: String, required: true },
+        deletedAt: { type: Date, required: true },
+      }],
+      default: [],
+    },
+    lastReadAt: {
+      type: [{
+        userId: { type: String, required: true },
+        readAt: { type: Date, required: true },
+      }],
       default: [],
     }
   },

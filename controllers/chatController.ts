@@ -89,15 +89,50 @@ export const findUserChats = asyncHandler(
         deletedBy: { $nin: [userId] },
       }).lean();
 
-      // Get the last message for each chat
+      // Get the last message and unread count for each chat
       const chatsWithLastMessage = await Promise.all(
         chats.map(async (chat: any) => {
           const lastMessage = await Message.findOne({ chatId: chat._id })
             .sort({ createdAt: -1 })
             .lean();
+
+          // Determine the cutoff for counting unread messages
+          const lastReadEntry = chat.lastReadAt?.find(
+            (entry: any) => entry.userId === userId
+          );
+          const deletionEntry = chat.messagesDeletedFor?.find(
+            (entry: any) => entry.userId === userId
+          );
+
+          // Use the most recent of lastReadAt and messagesDeletedFor as the cutoff
+          let cutoff: Date | null = null;
+          if (lastReadEntry?.readAt && deletionEntry?.deletedAt) {
+            cutoff = new Date(Math.max(
+              new Date(lastReadEntry.readAt).getTime(),
+              new Date(deletionEntry.deletedAt).getTime()
+            ));
+          } else {
+            cutoff = lastReadEntry?.readAt
+              ? new Date(lastReadEntry.readAt)
+              : deletionEntry?.deletedAt
+                ? new Date(deletionEntry.deletedAt)
+                : null;
+          }
+
+          // Count messages after the cutoff that were NOT sent by this user
+          const unreadQuery: any = {
+            chatId: chat._id,
+            senderId: { $ne: userId },
+          };
+          if (cutoff) {
+            unreadQuery.createdAt = { $gt: cutoff };
+          }
+          const unreadCount = await Message.countDocuments(unreadQuery);
+
           return {
             ...chat,
             lastMessage: lastMessage || null,
+            unreadCount,
           };
         })
       );
@@ -267,8 +302,23 @@ export const deleteChat = asyncHandler(
         // Individual chats: soft-delete for the requesting user
         if (!chat.deletedBy?.includes(userId)) {
           chat.deletedBy = [...(chat.deletedBy || []), userId];
-          await chat.save();
         }
+
+        // Record when messages were deleted for this user
+        // If an entry already exists, update the timestamp; otherwise add a new one
+        const existingEntry = chat.messagesDeletedFor?.find(
+          (entry) => entry.userId === userId
+        );
+        if (existingEntry) {
+          existingEntry.deletedAt = new Date();
+        } else {
+          chat.messagesDeletedFor = [
+            ...(chat.messagesDeletedFor || []),
+            { userId, deletedAt: new Date() },
+          ];
+        }
+
+        await chat.save();
         logger.info(`Chat soft-deleted for user ${userId}: ${chatId}`);
         res.status(200).json({ message: "Chat deleted successfully." });
       }
@@ -334,6 +384,46 @@ export const createGroupChat = asyncHandler(
     } catch (error: any) {
       logger.error("Error creating group chat:", { error });
       res.status(500).json({ message: "Error creating group chat." });
+    }
+  }
+);
+
+export const markChatRead = asyncHandler(
+  async (req: CustomRequest, res: Response) => {
+    const { chatId } = req.params;
+    const userId = req.user.id;
+
+    try {
+      const chat = await Chat.findById(chatId);
+
+      if (!chat) {
+        res.status(404).json({ message: "Chat not found." });
+        return;
+      }
+
+      if (!chat.members.includes(userId)) {
+        res.status(403).json({ message: "User is not a member of this chat." });
+        return;
+      }
+
+      // Update or insert the lastReadAt entry for this user
+      const existingEntry = chat.lastReadAt?.find(
+        (entry) => entry.userId === userId
+      );
+      if (existingEntry) {
+        existingEntry.readAt = new Date();
+      } else {
+        chat.lastReadAt = [
+          ...(chat.lastReadAt || []),
+          { userId, readAt: new Date() },
+        ];
+      }
+
+      await chat.save();
+      res.status(200).json({ message: "Chat marked as read." });
+    } catch (error: any) {
+      logger.error("Error marking chat as read", { error });
+      res.status(500).json({ message: "Error marking chat as read." });
     }
   }
 );

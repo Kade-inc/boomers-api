@@ -88,6 +88,12 @@ io.on("connection", (socket) => {
     logger.debug(`Socket disconnected: ${socket.id}`);
   });
 
+  // Join a user-specific room so we can push updates to this user globally
+  socket.on("joinUser", ({ userId }) => {
+    socket.join(`user_${userId}`);
+    logger.debug(`Socket ${socket.id} joined user room ${userId}`);
+  });
+
   // Chat-specific events only (notifications now use SSE)
   socket.on("joinChat", ({ chatId }) => {
     socket.join(`chat_${chatId}`);

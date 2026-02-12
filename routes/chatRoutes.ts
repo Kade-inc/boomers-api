@@ -8,6 +8,7 @@ import {
   findChat,
   findChatByChatId,
   findUserChats,
+  markChatRead,
   updateChat,
 } from "../controllers/chatController";
 
@@ -23,6 +24,8 @@ chatRouter.get("/find", findChat);
 chatRouter.get("/", findChatByChatId)
 
 chatRouter.get("/:userId", findUserChats);
+
+chatRouter.put("/:chatId/read", markChatRead)
 
 chatRouter.put("/:chatId", updateChat)
 

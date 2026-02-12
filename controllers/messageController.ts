@@ -49,6 +49,11 @@ export const createMessage = asyncHandler(
       // Emit new message to all users in the chat room
       req.app.locals.io.to(`chat_${chatId}`).emit("newMessage", response);
 
+      // Notify all chat members so their sidebar updates in real-time
+      chat.members.forEach((memberId: string) => {
+        req.app.locals.io.to(`user_${memberId}`).emit("chatUpdated", { chatId });
+      });
+
       logger.info(`Message created in chat: ${chatId} by user: ${senderId}`);
       res.status(201).json(response);
     } catch (error) {
@@ -61,11 +66,22 @@ export const createMessage = asyncHandler(
 export const getMessages = asyncHandler(
   async (req: CustomRequest, res: Response) => {
     const { chatId } = req.params;
+    const userId = req.user.id;
     logger.info(`Fetching messages for chat: ${chatId}`);
     try {
-      const messages = await Message.find({
-        chatId,
-      });
+      // Check if this user has a message deletion timestamp for this chat
+      const chat = await Chat.findById(chatId).lean();
+      const deletionEntry = chat?.messagesDeletedFor?.find(
+        (entry) => entry.userId === userId
+      );
+
+      // Build query: filter out messages before the user's deletion timestamp
+      const query: any = { chatId };
+      if (deletionEntry?.deletedAt) {
+        query.createdAt = { $gt: deletionEntry.deletedAt };
+      }
+
+      const messages = await Message.find(query);
       logger.info(`Fetched ${messages.length} messages for chat: ${chatId}`);
       res.status(200).json(messages);
     } catch (error) {
@@ -198,6 +214,11 @@ export const createMessageWithChat = asyncHandler(
 
       // Emit new message to all users in the chat room
       req.app.locals.io.to(`chat_${chat._id}`).emit("newMessage", message);
+
+      // Notify all chat members so their sidebar updates in real-time
+      chat.members.forEach((memberId: string) => {
+        req.app.locals.io.to(`user_${memberId}`).emit("chatUpdated", { chatId: chat._id });
+      });
 
       // If this is a new chat, also emit a newChat event so the recipient's chat list updates
       if (isNewChat) {
