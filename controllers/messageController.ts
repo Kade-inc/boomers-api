@@ -40,6 +40,12 @@ export const createMessage = asyncHandler(
         text,
       });
 
+      // Clear deletedBy so the chat reappears for users who soft-deleted it
+      if (chat.deletedBy && chat.deletedBy.length > 0) {
+        chat.deletedBy = [];
+        await chat.save();
+      }
+
       // Emit new message to all users in the chat room
       req.app.locals.io.to(`chat_${chatId}`).emit("newMessage", response);
 
@@ -183,6 +189,12 @@ export const createMessageWithChat = asyncHandler(
         senderId,
         text,
       });
+
+      // Clear deletedBy so the chat reappears for users who soft-deleted it
+      if (chat.deletedBy && chat.deletedBy.length > 0) {
+        chat.deletedBy = [];
+        await chat.save();
+      }
 
       // Emit new message to all users in the chat room
       req.app.locals.io.to(`chat_${chat._id}`).emit("newMessage", message);

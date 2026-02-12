@@ -7,6 +7,7 @@ interface IChat {
   admin?: string; // could be the ID of the user who created the group
   teamId?: string; // link to the team for team-based group chats
   teamColor?: string; // team's display color
+  deletedBy?: string[]; // user IDs who have soft-deleted this chat
 }
 
 const chatSchema = new Schema<IChat>(
@@ -30,6 +31,10 @@ const chatSchema = new Schema<IChat>(
     },
     teamColor: {
       type: String
+    },
+    deletedBy: {
+      type: [String],
+      default: [],
     }
   },
   {

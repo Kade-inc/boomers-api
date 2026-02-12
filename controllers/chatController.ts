@@ -86,6 +86,7 @@ export const findUserChats = asyncHandler(
     try {
       const chats = await Chat.find({
         members: { $in: [userId] },
+        deletedBy: { $nin: [userId] },
       }).lean();
 
       // Get the last message for each chat
@@ -138,10 +139,13 @@ export const findChat = asyncHandler(
     }
 
     try {
-      // Find a chat that includes all the specified members and has exactly that many members
+      // Find a one-to-one chat that includes all the specified members and has exactly that many members
+      // Exclude group chats and chats soft-deleted by the requesting user
       const chat = await Chat.findOne({
         members: { $all: members },
         $expr: { $eq: [{ $size: "$members" }, (members as string[]).length] },
+        isGroup: { $ne: true },
+        deletedBy: { $nin: [req.user.id] },
       });
 
       res.status(200).json(chat);
@@ -229,31 +233,49 @@ export const findChatByChatId = asyncHandler(
 export const deleteChat = asyncHandler(
   async (req: CustomRequest, res: Response) => {
     const { chatId } = req.params;
-    const ownerId = req.user.id
-    logger.info(`Deleting chat: ${chatId}`);
-
+    const userId = req.user.id;
+    logger.info(`Deleting chat: ${chatId} by user: ${userId}`);
 
     try {
       const chat = await Chat.findById(chatId);
 
       if (!chat) {
         res.status(404).json({ message: "Chat not found." });
-        return
+        return;
       }
 
-      if (chat.members[0] !== ownerId) {
-        logger.warn(`User ${ownerId} unauthorized to delete chat ${chatId}`);
-        res.status(403).json({ message: "User unauthorized to delete chat" });
-        return
+      // Verify user is a member of this chat
+      if (!chat.members.includes(userId)) {
+        logger.warn(`User ${userId} is not a member of chat ${chatId}`);
+        res.status(403).json({ message: "User is not a member of this chat." });
+        return;
       }
-      // Delete the chat
-      await chat.deleteOne()
-      logger.info(`Chat deleted: ${chatId}`);
-      res.status(200).json({ message: "Chat deleted successfully." });
+
+      if (chat.isGroup) {
+        // Group chats: only the admin (team owner) can delete
+        if (chat.admin !== userId) {
+          logger.warn(`User ${userId} unauthorized to delete group chat ${chatId}`);
+          res.status(403).json({ message: "Only the team owner can delete this group chat." });
+          return;
+        }
+        // Hard delete: remove chat and all its messages
+        await Message.deleteMany({ chatId: chat._id });
+        await chat.deleteOne();
+        logger.info(`Group chat hard-deleted: ${chatId}`);
+        res.status(200).json({ message: "Group chat deleted successfully." });
+      } else {
+        // Individual chats: soft-delete for the requesting user
+        if (!chat.deletedBy?.includes(userId)) {
+          chat.deletedBy = [...(chat.deletedBy || []), userId];
+          await chat.save();
+        }
+        logger.info(`Chat soft-deleted for user ${userId}: ${chatId}`);
+        res.status(200).json({ message: "Chat deleted successfully." });
+      }
     } catch (error: any) {
       logger.error("Error deleting chat", { error });
-      res.status(500)
-      throw new (error)
+      res.status(500);
+      throw new (error);
     }
   }
 );
