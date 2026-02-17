@@ -1,0 +1,34 @@
+PORT=XXX
+CONNECTION_STRING=XXX
+ACCESS_TOKEN_SECRET=XXX
+REFRESH_TOKEN_SECRET=XXX
+MONGO_DB_USER=XXX
+MONGO_DB_PASSWORD=XXX
+NODE_ENV=XXX
+GOOGLE_CLIENT_ID=XXX
+GOOGLE_CLIENT_SECRET=XXX
+FACEBOOK_CLIENT_ID=XXX
+FACEBOOK_CLIENT_SECRET=XXX
+USER_EMAIL=XXX
+MAIL_PASSWORD=XXX
+BUCKET_NAME=XXX
+BUCKET_REGION=XXX
+ACCESS_KEY=XXX
+SECRET_ACCESS_KEY=XXX
+FRONTEND_URL=XXX
+S3_BUCKET_PREFIX=XXX
+REDIS_URL=redis://localhost:6379
+
+# =============================================
+# Docker Configuration Notes
+# =============================================
+# When running with Docker Compose, update the following:
+#
+# REDIS_URL=redis://redis:6379
+#   (uses the 'redis' service name from docker-compose.yml)
+#
+# For local MongoDB (if not using Atlas):
+# CONNECTION_STRING=mongodb://mongodb:27017/boomers
+#   (uses the 'mongodb' service name from docker-compose.yml)
+#
+# For production with Docker, ensure NODE_ENV=production

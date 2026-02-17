@@ -1,0 +1,9 @@
+Success
+
+StatusCode: 00
+Message: successful
+Data: []
+
+Error: 
+StatusCode: 99
+Error: error.message

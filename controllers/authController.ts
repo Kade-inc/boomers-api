@@ -1,0 +1,294 @@
+import { Request, Response } from "express";
+import bcrypt from "bcrypt";
+import asyncHandler from "express-async-handler";
+import { User, UserLoginCode, Role, Blacklist } from "../models";
+import jwt from "jsonwebtoken";
+import dotenv from "dotenv";
+import { signAccessToken, signRefreshToken, verifyRefreshToken } from "../helpers/jwtHelper";
+import logger from "../services/logger";
+
+dotenv.config();
+//@desc Sign in a user
+//@route POST /api/users/login
+//access public
+const logInUser = asyncHandler(async (req: Request, res: Response) => {
+  try {
+    const { password, accountId } = req.body;
+
+    logger.info(`Login attempt for accountId: ${accountId}`);
+
+    if (!password.trim()) {
+      logger.warn("Login failed: Missing password");
+      res.status(400);
+      throw new Error("Please put a password");
+    }
+
+    const user = await User.find({
+      $or: [
+        { phoneNumber: accountId.trim() },
+        { username: accountId.trim() },
+        { email: accountId.trim() },
+      ],
+    }).populate('role');
+
+    if (!user.length) {
+      logger.warn(`Login failed: User not found for accountId: ${accountId}`);
+      res.status(401);
+      throw new Error("Invalid email/phone or password");
+    }
+
+    if (!user[0].isVerified) {
+      logger.warn(`Login failed: User not verified for accountId: ${accountId}`);
+      res.status(401);
+      throw new Error("Invalid email/phone or password");
+    }
+
+    const isPasswordValid = await bcrypt.compare(password, user[0].password);
+
+    if (!isPasswordValid) {
+      logger.warn(`Login failed: Invalid password for accountId: ${accountId}`);
+      res.status(401);
+      throw new Error("Invalid email/phone or password");
+    }
+
+    // const existingAuthCode = await UserLoginCode.findOne({
+    //   userId: user[0]._id,
+    // });
+
+    // if (existingAuthCode) {
+    //   await UserLoginCode.findByIdAndDelete(existingAuthCode._id);
+    // }
+
+    // // Generate Auth Code
+    // const authCode = generateAuthCode();
+
+    // // Hash the Auth Code
+    // const hashedAuthCode = await bcrypt.hash(authCode, 10);
+
+    // // Store the hashed authentication code in the database
+    // await UserLoginCode.create({
+    //   userId: user[0]._id,
+    //   logInCode: hashedAuthCode,
+    // });
+
+    // res.status(200).json({ message: "Log in successful", authCode });
+    // Create a JWT token with an expiration time of 1 hour
+    // const token = jwt.sign(
+    //   {
+    //     user: {
+    //       phoneNumber: user[0].phoneNumber,
+    //       email: user[0].email,
+    //       id: user[0]._id,
+    //     },
+    //   },
+    //   process.env.ACCESS_TOKEN_SECRET!,
+    //   {
+    //     expiresIn: "1h",
+    //   }
+    // );
+    const accessToken = signAccessToken(user[0])
+    const refreshToken = signRefreshToken(user[0])
+
+    // let options:any = {
+    //   maxAge: 365 * 24 * 60 * 60 * 1000, // would expire in 20minutes
+    //   httpOnly: true, // The cookie is only accessible by the web server
+    //   secure: true,
+    //   sameSite: "None",
+    // };
+
+    // res.cookie("token", accessToken, options); 
+    logger.info(`Login successful for user: ${user[0]._id}`);
+    res.status(200).json({
+      message: "Log in successful",
+      accessToken,
+      refreshToken,
+      user: {
+        id: user[0]._id,
+        email: user[0].email,
+        role: user[0].role ? (user[0].role as any).name : 'user'
+      }
+    });
+
+
+  } catch (error: any) {
+    logger.error(`Login error: ${error.message}`);
+    res.status(400)
+    throw new Error(error);
+  }
+});
+
+
+//@desc Verify Auth Code
+//@route POST /api/users/verify-code
+//access public
+export const verifyUserCode = asyncHandler(
+  async (req: Request, res: Response) => {
+    try {
+      const { authCode, accountId } = req.body;
+      logger.info(`Verifying user code for accountId: ${accountId}`);
+
+      if (!accountId && !authCode) {
+        logger.warn("Verification failed: Missing accountId or authCode");
+        res.status(400).json({
+          message: "Please provide both accountId and verification code",
+        });
+        return;
+      }
+
+      const user = await User.find({
+        $or: [
+          { phoneNumber: accountId.trim() },
+          { username: accountId.trim() },
+          { email: accountId.trim() },
+        ],
+      }).populate('role');
+      if (!user.length) {
+        logger.warn("Verification failed: User not found");
+        res.status(404);
+        throw new Error("User not found");
+      }
+
+      const logInAuthCode = await UserLoginCode.findOne({
+        userId: user[0]._id,
+      });
+
+      if (!logInAuthCode) {
+        logger.warn("Verification failed: No auth code found");
+        res.status(400).json({ message: "No authentication code found" });
+        return;
+      }
+
+      // Check if the code has expired
+      const createdDate: any = logInAuthCode._id.getTimestamp();
+      const currentDate: any = new Date();
+      const diffTime = Math.abs(createdDate - currentDate);
+      const fiveminutes = 1000 * 60 * 5;
+      if (diffTime > fiveminutes) {
+        logger.warn("Verification failed: Auth code expired");
+        await UserLoginCode.findByIdAndDelete(logInAuthCode._id);
+        res.status(400).json({ error: "Authentication code expired" });
+        return;
+      }
+
+      // Compare the entered code with the hashed code retrieved from the database
+      const isCodeValid = await bcrypt.compare(
+        authCode,
+        logInAuthCode.logInCode
+      );
+
+      if (!isCodeValid) {
+        logger.warn("Verification failed: Incorrect code");
+        res.status(400).json({ message: "Incorrect code" });
+        return;
+      }
+
+      // Delete the authentication code from the database
+      await UserLoginCode.deleteOne({ userId: user[0]._id });
+
+      // Create a JWT token with an expiration time of 1 hour
+      const token = jwt.sign(
+        {
+          user: {
+            phoneNumber: user[0].phoneNumber,
+            email: user[0].email,
+            id: user[0]._id,
+          },
+        },
+        process.env.ACCESS_TOKEN_SECRET!,
+        {
+          expiresIn: "1h",
+        }
+      );
+
+      logger.info(`Code verified successfully for user: ${user[0]._id}`);
+      res.status(200).json({ message: "Code verified successfully", token });
+    } catch (error: any) {
+      logger.error(`Verification error: ${error.message}`);
+      throw new Error(error);
+    }
+  }
+);
+
+
+export const refreshToken = asyncHandler(
+  async (req: Request, res: Response) => {
+    try {
+      const { refreshToken } = req.body
+      logger.info("Refresh token attempt");
+
+      if (!refreshToken) {
+        logger.warn("Refresh token failed: Missing refresh token");
+        res.status(400)
+        throw new Error("Please put a refresh token")
+      }
+
+      const user = await verifyRefreshToken(refreshToken)
+
+      const accessToken = await signAccessToken(user)
+      const refToken = await signRefreshToken(user)
+
+      logger.info("Refresh token successful");
+      res.status(201).json({ accessToken: accessToken, refreshToken: refToken })
+    }
+    catch (error: any) {
+      logger.error(`Refresh token error: ${error.message}`);
+      res.status(400)
+      throw new Error(error)
+    }
+  }
+
+)
+
+// Function to generate a random authentication code
+const generateAuthCode = () => {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+};
+
+
+
+
+/**
+ * @route POST /auth/logout
+ * @desc Logout user
+ * @access Public
+ */
+export const logout = asyncHandler(async (req: Request, res: Response) => {
+  try {
+    logger.info("Logout attempt");
+
+    // TODO: 
+    // Add logic for getting token from the cookie
+    // const token = req.cookies.token;
+
+    const { token } = req.body
+    const checkIfBlacklisted = await Blacklist.findOne({ token: token }); // Check if that token is blacklisted
+    // if true, send a no content response.
+    if (checkIfBlacklisted) {
+      logger.info("Logout: Token already blacklisted");
+      res.sendStatus(204);
+      return
+    }
+
+    // otherwise blacklist token
+    const newBlacklist = new Blacklist({
+      token: token,
+    });
+
+    await newBlacklist.save();
+    // Also clear request cookie on client
+    // res.setHeader('Clear-Site-Data', '"cookies"');
+
+    logger.info("Logout successful");
+    res.status(200).json({ message: 'You are logged out!' });
+  } catch (err) {
+    logger.error(`Logout error: ${err}`);
+    res.status(500).json({
+      status: 'error',
+      message: 'Internal Server Error',
+    });
+  }
+
+})
+
+
+export default logInUser;
